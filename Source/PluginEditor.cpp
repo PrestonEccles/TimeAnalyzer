@@ -15,13 +15,38 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
+
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
     midiResults.setMultiLine(true);
     midiResults.setText(audioProcessor.stateInfo.getProperty(NAME_OF(midiResults)));
-    midiResults.onTextChange = [&]()
+    saveMidiResultsCallback = [&]()
     {
         audioProcessor.stateInfo.setProperty(NAME_OF(midiResults), midiResults.getText(), nullptr);
+    };
+    midiResults.onTextChange = saveMidiResultsCallback;
+
+    currentFont = midiResults.getFont();
+    addAndMakeVisible(fontSize_Slider);
+    fontSize_Slider.setTextValueSuffix(" Font Size");
+    fontSize_Slider.setRange(10, 120, 1);
+    fontSize_Slider.onValueChange = [&]()
+    {
+        midiResults.onTextChange = nullptr;
+        midiResults.setFont(currentFont.withHeight(fontSize_Slider.getValue()));
+
+        juce::String resultsString = midiResults.getText();
+        if (resultsString[resultsString.length() - 1] == '\n')
+            midiResults.setText(resultsString.substring(0, resultsString.length() - 1));
+        else
+            midiResults.setText(resultsString + "\n");
+
+        midiResults.onTextChange = saveMidiResultsCallback;
+    };
+    fontSize_Slider.setValue(audioProcessor.stateInfo.getProperty(NAME_OF(fontSize_Slider)));
+    fontSize_Slider.onDragEnd = [&]()
+    {
+        audioProcessor.stateInfo.setProperty(NAME_OF(fontSize_Slider), fontSize_Slider.getValue(), nullptr);
     };
 
     addAndMakeVisible(rhythmInstrument_Toggle);
@@ -65,7 +90,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     addAndMakeVisible(analyzeMidiFile_Button);
     analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
-    setSize (400, 300);
+    setSize (500, 500);
 
     //load quantized midi
     for (auto midi : audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)))
@@ -102,7 +127,11 @@ void TimeAnalyzerAudioProcessorEditor::resized()
         editTempo_Toggle.setBounds(tempoBounds.withLeft(playHeadTempo.getRight()).withSize(100, 25));
         tempo_Editor.setBounds(tempoBounds.withLeft(editTempo_Toggle.getRight()).withSize(100, 25));
     }
-    rhythmInstrument_Toggle.setBounds(bounds.removeFromBottom(30));
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+        rhythmInstrument_Toggle.setBounds(tempoBounds.withRight(getWidth() / 2));
+        fontSize_Slider.setBounds(tempoBounds.withLeft(getWidth() / 2));
+    }
 
     midiResults.setBounds(bounds);
 }
@@ -121,7 +150,7 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     juce::String results = "Quantized Midi Info: \n";
     for (auto midi : quantizedMidi)
     {
-        results += "Note: " + getMidiNoteName(midi.note) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+        results += "Note: " + getMidiNoteName(midi.note) + ", ms: " + juce::String(midi.ms) + juce::newLine;
     }
     midiResults.setText(results);
 
@@ -156,9 +185,20 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
     }
 
     juce::String results = "Analysis: \n";
-    for (auto midi : midiToAnalyze)
+    for (MidiEvent midi : midiToAnalyze)
     {
-        results += "Note: " + getMidiNoteName(midi.note) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+        double lowestDifference = midi.ms - quantizedMidi[0].ms;
+        int closestQuantizedIndex = 0;
+        for (int i = 1; i < quantizedMidi.size(); i++)
+        {
+            if (std::abs(midi.ms - quantizedMidi[i].ms) < std::abs(lowestDifference))
+            {
+                lowestDifference = midi.ms - quantizedMidi[i].ms;
+                closestQuantizedIndex = i;
+            }
+        }
+
+        results += "Note: " + getMidiNoteName(midi.note) + ", ms Diff: " + juce::String(lowestDifference) + juce::newLine;
     }
     midiResults.setText(results);
 }
@@ -180,7 +220,7 @@ juce::File TimeAnalyzerAudioProcessorEditor::getNewMidiFile()
                 continue;
             }
 
-            if (childFile.getCreationTime() < newestMidiFile.getCreationTime())
+            if (childFile.getCreationTime() > newestMidiFile.getCreationTime())
                 newestMidiFile = childFile;
         }
     }

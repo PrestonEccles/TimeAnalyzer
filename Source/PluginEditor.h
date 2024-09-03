@@ -27,6 +27,7 @@ public:
     //==============================================================================
     struct MidiEvent
     {
+        MidiEvent() : note(0), ms(0) {}
         MidiEvent(int note, double ms) : note(note), ms(ms) {}
         MidiEvent(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
             : note(eventHolder.message.getNoteNumber()), ms(getMiliseconds(eventHolder, bpm)) {}
@@ -36,7 +37,7 @@ public:
             double beatPosition = eventHolder.message.getTimeStamp() / 960;
             double beatSecondsLength = 60 / bpm;
             double midiSeconds = beatPosition * beatSecondsLength;
-            return std::floor(midiSeconds * 1000);
+            return std::round(midiSeconds * 1000);
         }
 
         int note;
@@ -63,8 +64,12 @@ private:
     //==============================================================================
 
     juce::TextEditor midiResults;
+    std::function<void()> saveMidiResultsCallback;
 
     juce::ToggleButton rhythmInstrument_Toggle{ "Is Rhythm Instrument" };
+    juce::Slider fontSize_Slider;
+    juce::Font currentFont;
+
     juce::TextEditor playHeadTempo;
     juce::ToggleButton editTempo_Toggle{ "Edit Tempo" };
     juce::TextEditor tempo_Editor;
