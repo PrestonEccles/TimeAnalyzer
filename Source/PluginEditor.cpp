@@ -14,21 +14,20 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     addAndMakeVisible(readMidiFile_Button);
-    readMidiFile_Button.onClick = [&]() { getMidiFile(); };
+    readMidiFile_Button.onClick = [&]() { readMidiFile(); };
 
     addAndMakeVisible(midiDirectory_Editor);
-    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty("midiDirectory"), false);
+    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty("midiDirectory"));
     midiDirectory_Editor.onTextChange = [&]() 
     {
         audioProcessor.stateInfo.setProperty("midiDirectory", midiDirectory_Editor.getText(), nullptr);
-        setOldMidiFiles();
     };
 
     addAndMakeVisible(playHeadTempo);
     playHeadTempo.setReadOnly(true);
 
     addAndMakeVisible(editTempo_Toggle);
-    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("editTempoToggle"), false);
+    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("editTempoToggle"), true);
     editTempo_Toggle.onClick = [&]()
     {
         audioProcessor.stateInfo.setProperty("editTempoToggle", editTempo_Toggle.getToggleState(), nullptr);
@@ -46,6 +45,11 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
     midiResults.setMultiLine(true);
+    midiResults.setText(audioProcessor.stateInfo.getProperty("midiResults"));
+    midiResults.onTextChange = [&]()
+    {
+        audioProcessor.stateInfo.setProperty("midiResults", tempo_Editor.getText(), nullptr);
+    };
 
     setSize (400, 300);
 }
@@ -78,7 +82,7 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     midiResults.setBounds(bounds);
 }
 
-void TimeAnalyzerAudioProcessorEditor::getMidiFile()
+void TimeAnalyzerAudioProcessorEditor::readMidiFile()
 {
     setNewMidiFile();
 
@@ -137,47 +141,25 @@ void TimeAnalyzerAudioProcessorEditor::getMidiFile()
         DBG("could not read file \"" << readFile.getFullPathName() << "\"");
 }
 
-void TimeAnalyzerAudioProcessorEditor::setOldMidiFiles()
-{
-    juce::File newMidiDirectory(midiDirectory_Editor.getText().unquoted());
-    if (!newMidiDirectory.exists() || !newMidiDirectory.isDirectory())
-        return;
-
-    oldMidiFiles.clear();
-
-    for (juce::File childFile : newMidiDirectory.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false))
-    {
-        if (childFile.getFileExtension() == ".mid") //is midi file?
-        {
-            oldMidiFiles.add(childFile);
-        }
-    }
-}
-
 void TimeAnalyzerAudioProcessorEditor::setNewMidiFile()
 {
     juce::File newMidiDirectory(midiDirectory_Editor.getText().unquoted());
     if (!newMidiDirectory.exists() || !newMidiDirectory.isDirectory())
         return;
 
+    //find the newest created midi file
     for (juce::File childFile : newMidiDirectory.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false))
     {
         if (childFile.getFileExtension() == ".mid") //is midi file?
         {
-            bool isNewFile = true;
-            for (juce::File oldFile : oldMidiFiles)
+            if (!currentMidiFile.exists())
             {
-                if (oldFile == childFile)
-                {
-                    isNewFile = false;
-                    break;
-                }
+                currentMidiFile = childFile; //initialize first file
+                continue;
             }
-            if (isNewFile)
-            {
-                setOldMidiFiles();
+
+            if (childFile.getCreationTime() < currentMidiFile.getCreationTime())
                 currentMidiFile = childFile;
-            }
         }
     }
 }
