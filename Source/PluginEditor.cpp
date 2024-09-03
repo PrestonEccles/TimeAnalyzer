@@ -15,7 +15,6 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
     midiResults.setMultiLine(true);
@@ -90,7 +89,13 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     addAndMakeVisible(analyzeMidiFile_Button);
     analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
-    setSize (500, 500);
+    setResizable(true, true);
+
+    if (audioProcessor.stateInfo.getProperty("width") && audioProcessor.stateInfo.getProperty("height"))
+        setSize(audioProcessor.stateInfo.getProperty("width"), audioProcessor.stateInfo.getProperty("height"));
+    else
+        setSize(500, 500);
+
 
     //load quantized midi
     for (auto midi : audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)))
@@ -113,6 +118,9 @@ void TimeAnalyzerAudioProcessorEditor::paint (juce::Graphics& g)
 
 void TimeAnalyzerAudioProcessorEditor::resized()
 {
+    audioProcessor.stateInfo.setProperty("width", getWidth(), nullptr);
+    audioProcessor.stateInfo.setProperty("height", getHeight(), nullptr);
+
     auto bounds = getLocalBounds();
 
     {
