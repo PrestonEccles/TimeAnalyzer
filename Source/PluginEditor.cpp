@@ -28,7 +28,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     currentFont = midiResults.getFont();
     addAndMakeVisible(fontSize_Slider);
     fontSize_Slider.setTextValueSuffix(" Font Size");
-    fontSize_Slider.setRange(10, 120, 1);
+    fontSize_Slider.setRange(10, 50, .5);
     fontSize_Slider.onValueChange = [&]()
     {
         midiResults.onTextChange = nullptr;
@@ -48,12 +48,12 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
         audioProcessor.stateInfo.setProperty(NAME_OF(fontSize_Slider), fontSize_Slider.getValue(), nullptr);
     };
 
-    addAndMakeVisible(rhythmInstrument_Toggle);
-    rhythmInstrument_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(rhythmInstrument_Toggle)), true);
-    rhythmInstrument_Toggle.onClick = [&]()
+    addAndMakeVisible(drumNotes_Toggle);
+    drumNotes_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(drumNotes_Toggle)), true);
+    drumNotes_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(rhythmInstrument_Toggle), 
-                                             rhythmInstrument_Toggle.getToggleState(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(drumNotes_Toggle), 
+                                             drumNotes_Toggle.getToggleState(), nullptr);
     };
 
     addAndMakeVisible(playHeadTempo);
@@ -137,7 +137,7 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     }
     {
         auto tempoBounds = bounds.removeFromBottom(30);
-        rhythmInstrument_Toggle.setBounds(tempoBounds.withRight(getWidth() / 2));
+        drumNotes_Toggle.setBounds(tempoBounds.withRight(getWidth() / 2));
         fontSize_Slider.setBounds(tempoBounds.withLeft(getWidth() / 2));
     }
 
@@ -158,11 +158,13 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     juce::String results = "Quantized Midi Info: \n";
     for (auto midi : quantizedMidi)
     {
-        results += "Note: " + getMidiNoteName(midi.note) + ", ms: " + juce::String(midi.ms) + juce::newLine;
+        results += "Note: " + getMidiNoteName(midi.note) 
+            + ", num: " + juce::String(midi.note) 
+            + ", ms: " + juce::String(midi.ms) + juce::newLine;
     }
     midiResults.setText(results);
 
-    //save midi into state info
+    //save quantized midi into state info
     juce::ValueTree quantizedMidiTree(NAME_OF(quantizedMidi));
     for (auto midi : quantizedMidi)
     {
@@ -172,7 +174,11 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
         quantizedMidiTree.appendChild(midiValue, nullptr);
     }
 
-    audioProcessor.stateInfo.appendChild(quantizedMidiTree, nullptr);
+    //clear existing quantized midi trees
+    while (audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)).getNumChildren() > 0)
+        audioProcessor.stateInfo.removeChild(audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)), nullptr);
+    
+    audioProcessor.stateInfo.appendChild(quantizedMidiTree, nullptr); //save
 }
 
 void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
@@ -271,8 +277,26 @@ juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(juce::MidiMessage
 
 juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int note)
 {
-    if (rhythmInstrument_Toggle.getToggleState())
-        return juce::MidiMessage::getRhythmInstrumentName(note);
+    if (drumNotes_Toggle.getToggleState())
+    {
+        switch (note)
+        {
+            case 38:
+                return "Snare";
+            case 40:
+                return "Snare Rim";
+            case 47:
+                return "Crash Cymbal 2";
+            case 58:
+                return "Low Floor Tom";
+            case 23:
+                return "Mid-Open Hi-Hat";
+            default:
+                juce::String rhythmName = juce::MidiMessage::getRhythmInstrumentName(note);
+                if (rhythmName.isNotEmpty())
+                    return rhythmName;
+        }
+    }
 
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }

@@ -66,7 +66,7 @@ private:
     juce::TextEditor midiResults;
     std::function<void()> saveMidiResultsCallback;
 
-    juce::ToggleButton rhythmInstrument_Toggle{ "Is Rhythm Instrument" };
+    juce::ToggleButton drumNotes_Toggle{ "Is Drums?" };
     juce::Slider fontSize_Slider;
     juce::Font currentFont;
 
