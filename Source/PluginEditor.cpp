@@ -12,8 +12,8 @@
 #define NAME_OF(name) (#name)
 
 //==============================================================================
-TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerAudioProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p)
 {
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
@@ -35,10 +35,13 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
         midiResults.setFont(currentFont.withHeight(fontSize_Slider.getValue()));
 
         juce::String resultsString = midiResults.getText();
-        if (resultsString[resultsString.length() - 1] == '\n')
-            midiResults.setText(resultsString.substring(0, resultsString.length() - 1));
-        else
-            midiResults.setText(resultsString + "\n");
+        if (resultsString.isNotEmpty())
+        {
+            if (resultsString[resultsString.length() - 1] == '\n')
+                midiResults.setText(resultsString.substring(0, resultsString.length() - 1));
+            else
+                midiResults.setText(resultsString + "\n");
+        }
 
         midiResults.onTextChange = saveMidiResultsCallback;
     };
@@ -52,7 +55,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     drumNotes_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(drumNotes_Toggle)), true);
     drumNotes_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(drumNotes_Toggle), 
+        audioProcessor.stateInfo.setProperty(NAME_OF(drumNotes_Toggle),
                                              drumNotes_Toggle.getToggleState(), nullptr);
     };
 
@@ -89,6 +92,20 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     addAndMakeVisible(analyzeMidiFile_Button);
     analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
+    addAndMakeVisible(detectNewMidi_Toggle);
+    detectNewMidi_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidi_Toggle)), true);
+    detectNewMidi_Toggle.onClick = [&]()
+    {
+        audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidi_Toggle), detectNewMidi_Toggle.getToggleState(), nullptr);
+
+        if (!detectNewMidi_Toggle.getToggleState())
+            stopTimer();
+        else if (!isTimerRunning())
+            startTimer(1000);
+    };
+    if (detectNewMidi_Toggle.getToggleState())
+        startTimer(1000);
+
     setResizable(true, true);
 
     if (audioProcessor.stateInfo.getProperty("width") && audioProcessor.stateInfo.getProperty("height"))
@@ -109,10 +126,10 @@ TimeAnalyzerAudioProcessorEditor::~TimeAnalyzerAudioProcessorEditor()
 }
 
 //==============================================================================
-void TimeAnalyzerAudioProcessorEditor::paint (juce::Graphics& g)
+void TimeAnalyzerAudioProcessorEditor::paint(juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
 }
 
@@ -125,8 +142,9 @@ void TimeAnalyzerAudioProcessorEditor::resized()
 
     {
         auto tempoBounds = bounds.removeFromBottom(30);
-        setQuantizedMidiFile_Button.setBounds(tempoBounds.withRight(getWidth() / 2));
-        analyzeMidiFile_Button.setBounds(tempoBounds.withLeft(getWidth() / 2));
+        setQuantizedMidiFile_Button.setBounds(tempoBounds.withRight(getWidth() / 3));
+        analyzeMidiFile_Button.setBounds(tempoBounds.withLeft(setQuantizedMidiFile_Button.getRight()).withWidth(getWidth() / 3));
+        detectNewMidi_Toggle.setBounds(tempoBounds.withLeft(analyzeMidiFile_Button.getRight()).withWidth(getWidth() / 3));
     }
     midiDirectory_Editor.setBounds(bounds.removeFromBottom(30));
     {
@@ -144,12 +162,37 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     midiResults.setBounds(bounds);
 }
 
+void TimeAnalyzerAudioProcessorEditor::timerCallback()
+{
+    if (!quantizedMidiFile.exists() && quantizedMidi.isEmpty())
+        return;
+
+    if (quantizedMidi.isEmpty())
+    {
+        midiResults.setText("Please Set a Quantized Midi File");
+        return;
+    }
+
+    juce::File newMidiFile = getNewMidiFile();
+    if (newMidiFile == newestMidiFile || newMidiFile == quantizedMidiFile)
+    {
+        return; //no new midi files
+    }
+
+    if (audioProcessor.getPlayHead()->getPosition()->getIsRecording())
+        return; //the host might be recording the newest midi file
+
+    newestMidiFile = newMidiFile;
+    analyzeMidiFile();
+}
+
 void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
 {
     playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
 
     quantizedMidi.clear();
-    if (!readMidiFile(getNewMidiFile(), quantizedMidi))
+    quantizedMidiFile = getNewMidiFile();
+    if (!readMidiFile(quantizedMidiFile, quantizedMidi))
     {
         midiResults.setText("No Midi Files Detected");
         return;
@@ -158,8 +201,8 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     juce::String results = "Quantized Midi Info: \n";
     for (auto midi : quantizedMidi)
     {
-        results += "Note: " + getMidiNoteName(midi.note) 
-            + ", num: " + juce::String(midi.note) 
+        results += "Note: " + getMidiNoteName(midi.note)
+            + ", num: " + juce::String(midi.note)
             + ", ms: " + juce::String(midi.ms) + juce::newLine;
     }
     midiResults.setText(results);
@@ -177,7 +220,7 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     //clear existing quantized midi trees
     while (audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)).getNumChildren() > 0)
         audioProcessor.stateInfo.removeChild(audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)), nullptr);
-    
+
     audioProcessor.stateInfo.appendChild(quantizedMidiTree, nullptr); //save
 }
 
@@ -253,9 +296,10 @@ bool TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::File midiFile, juce::A
         currentBpm = audioProcessor.playHeadBpm;
 
     juce::MidiFile midi;
-    juce::File readFile(midiFile);
-    juce::FileInputStream inputStream(readFile);
-    if (inputStream.failedToOpen() || !midi.readFrom(inputStream))
+    juce::FileInputStream inputStream(midiFile);
+    if (inputStream.failedToOpen())
+        return false;
+    if (!midi.readFrom(inputStream))
         return false;
 
     for (int i = 0; i < midi.getNumTracks(); i++)

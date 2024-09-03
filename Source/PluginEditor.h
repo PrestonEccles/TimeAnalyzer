@@ -14,7 +14,7 @@
 //==============================================================================
 /**
 */
-class TimeAnalyzerAudioProcessorEditor  : public juce::AudioProcessorEditor
+class TimeAnalyzerAudioProcessorEditor  : public juce::AudioProcessorEditor, juce::Timer
 {
 public:
     TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor&);
@@ -23,6 +23,7 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
+    void timerCallback() override;
 
     //==============================================================================
     struct MidiEvent
@@ -78,9 +79,12 @@ private:
 
     juce::TextButton setQuantizedMidiFile_Button{ "Set Quantized Midi File" };
     juce::TextButton analyzeMidiFile_Button{ "Analyze Midi File" };
+    juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
 
     //==============================================================================
     juce::Array<MidiEvent> quantizedMidi;
+    juce::File quantizedMidiFile;
+    juce::File newestMidiFile;
 
     //==============================================================================
 
