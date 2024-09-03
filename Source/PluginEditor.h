@@ -27,9 +27,9 @@ public:
     //==============================================================================
     struct MidiEvent
     {
-        MidiEvent(int noteNumber, double ms) : noteNumber(noteNumber), ms(ms) {}
+        MidiEvent(int note, double ms) : note(note), ms(ms) {}
         MidiEvent(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
-            : noteNumber(eventHolder.message.getNoteNumber()), ms(getMiliseconds(eventHolder, bpm)) {}
+            : note(eventHolder.message.getNoteNumber()), ms(getMiliseconds(eventHolder, bpm)) {}
 
         double getMiliseconds(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
         {
@@ -39,7 +39,7 @@ public:
             return std::floor(midiSeconds * 1000);
         }
 
-        int noteNumber;
+        int note;
         double ms;
     };
 
@@ -50,7 +50,7 @@ public:
     bool readMidiFile(juce::File midiFile, juce::Array<MidiEvent>& out);
 
     juce::String getMidiNoteName(juce::MidiMessage message);
-    juce::String getMidiNoteName(int noteNumber);
+    juce::String getMidiNoteName(int note);
 
     //==============================================================================
 

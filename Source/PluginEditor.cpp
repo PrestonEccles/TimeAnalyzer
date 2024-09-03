@@ -9,6 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#define NAME_OF(name) (#name)
+
 //==============================================================================
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
@@ -16,44 +18,45 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
     midiResults.setMultiLine(true);
-    midiResults.setText(audioProcessor.stateInfo.getProperty("midiResults"));
+    midiResults.setText(audioProcessor.stateInfo.getProperty(NAME_OF(midiResults)));
     midiResults.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty("midiResults", midiResults.getText(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(midiResults), midiResults.getText(), nullptr);
     };
 
     addAndMakeVisible(rhythmInstrument_Toggle);
-    rhythmInstrument_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("rhythmInstrument_Toggle"), true);
+    rhythmInstrument_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(rhythmInstrument_Toggle)), true);
     rhythmInstrument_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty("rhythmInstrument_Toggle", rhythmInstrument_Toggle.getToggleState(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(rhythmInstrument_Toggle), 
+                                             rhythmInstrument_Toggle.getToggleState(), nullptr);
     };
 
     addAndMakeVisible(playHeadTempo);
     playHeadTempo.setReadOnly(true);
 
     addAndMakeVisible(editTempo_Toggle);
-    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("editTempo_Toggle"), true);
+    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(editTempo_Toggle)), true);
     editTempo_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty("editTempo_Toggle", editTempo_Toggle.getToggleState(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(editTempo_Toggle), editTempo_Toggle.getToggleState(), nullptr);
         tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
     };
 
     addAndMakeVisible(tempo_Editor);
     tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
-    tempo_Editor.setText(audioProcessor.stateInfo.getProperty("editedTempo"));
+    tempo_Editor.setText(audioProcessor.stateInfo.getProperty(NAME_OF(tempo_Editor)));
     tempo_Editor.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty("editedTempo", tempo_Editor.getText(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(tempo_Editor), tempo_Editor.getText(), nullptr);
     };
 
     addAndMakeVisible(midiDirectory_Editor);
     midiDirectory_Editor.setSelectAllWhenFocused(true);
-    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty("midiDirectory"));
+    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty(NAME_OF(midiDirectory_Editor)));
     midiDirectory_Editor.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty("midiDirectory", midiDirectory_Editor.getText(), nullptr);
+        audioProcessor.stateInfo.setProperty(NAME_OF(midiDirectory_Editor), midiDirectory_Editor.getText(), nullptr);
     };
 
     addAndMakeVisible(setQuantizedMidiFile_Button);
@@ -63,6 +66,12 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
     analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
     setSize (400, 300);
+
+    //load quantized midi
+    for (auto midi : audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)))
+    {
+        quantizedMidi.add(MidiEvent(midi.getProperty(NAME_OF(MidiEvent::note)), midi.getProperty(NAME_OF(MidiEvent::ms))));
+    }
 }
 
 TimeAnalyzerAudioProcessorEditor::~TimeAnalyzerAudioProcessorEditor()
@@ -93,6 +102,7 @@ void TimeAnalyzerAudioProcessorEditor::resized()
         editTempo_Toggle.setBounds(tempoBounds.withLeft(playHeadTempo.getRight()).withSize(100, 25));
         tempo_Editor.setBounds(tempoBounds.withLeft(editTempo_Toggle.getRight()).withSize(100, 25));
     }
+    rhythmInstrument_Toggle.setBounds(bounds.removeFromBottom(30));
 
     midiResults.setBounds(bounds);
 }
@@ -111,9 +121,21 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     juce::String results = "Quantized Midi Info: \n";
     for (auto midi : quantizedMidi)
     {
-        results += "Note: " + getMidiNoteName(midi.noteNumber) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+        results += "Note: " + getMidiNoteName(midi.note) + "  ms: " + juce::String(midi.ms) + juce::newLine;
     }
     midiResults.setText(results);
+
+    //save midi into state info
+    juce::ValueTree quantizedMidiTree(NAME_OF(quantizedMidi));
+    for (auto midi : quantizedMidi)
+    {
+        juce::ValueTree midiValue(NAME_OF(MidiEvent));
+        midiValue.setProperty(NAME_OF(MidiEvent::note), midi.note, nullptr);
+        midiValue.setProperty(NAME_OF(MidiEvent::ms), midi.ms, nullptr);
+        quantizedMidiTree.appendChild(midiValue, nullptr);
+    }
+
+    audioProcessor.stateInfo.appendChild(quantizedMidiTree, nullptr);
 }
 
 void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
@@ -136,7 +158,7 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
     juce::String results = "Analysis: \n";
     for (auto midi : midiToAnalyze)
     {
-        results += "Note: " + getMidiNoteName(midi.noteNumber) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+        results += "Note: " + getMidiNoteName(midi.note) + "  ms: " + juce::String(midi.ms) + juce::newLine;
     }
     midiResults.setText(results);
 }
@@ -186,7 +208,8 @@ bool TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::File midiFile, juce::A
     {
         for (auto sequence : *midi.getTrack(i))
         {
-            out.add(MidiEvent(*sequence, currentBpm));
+            if (sequence->message.isNoteOn())
+                out.add(MidiEvent(*sequence, currentBpm));
         }
     }
 
@@ -198,10 +221,10 @@ juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(juce::MidiMessage
     return getMidiNoteName(message.getNoteNumber());
 }
 
-juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int noteNumber)
+juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int note)
 {
     if (rhythmInstrument_Toggle.getToggleState())
-        return juce::MidiMessage::getRhythmInstrumentName(noteNumber);
+        return juce::MidiMessage::getRhythmInstrumentName(note);
 
-    return juce::MidiMessage::getMidiNoteName(noteNumber, true, true, 4);
+    return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
 }
