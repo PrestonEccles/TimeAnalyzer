@@ -13,24 +13,30 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    addAndMakeVisible(readMidiFile_Button);
-    readMidiFile_Button.onClick = [&]() { readMidiFile(); };
-
-    addAndMakeVisible(midiDirectory_Editor);
-    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty("midiDirectory"));
-    midiDirectory_Editor.onTextChange = [&]() 
+    addAndMakeVisible(midiResults);
+    midiResults.setReadOnly(true);
+    midiResults.setMultiLine(true);
+    midiResults.setText(audioProcessor.stateInfo.getProperty("midiResults"));
+    midiResults.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty("midiDirectory", midiDirectory_Editor.getText(), nullptr);
+        audioProcessor.stateInfo.setProperty("midiResults", midiResults.getText(), nullptr);
+    };
+
+    addAndMakeVisible(rhythmInstrument_Toggle);
+    rhythmInstrument_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("rhythmInstrument_Toggle"), true);
+    rhythmInstrument_Toggle.onClick = [&]()
+    {
+        audioProcessor.stateInfo.setProperty("rhythmInstrument_Toggle", rhythmInstrument_Toggle.getToggleState(), nullptr);
     };
 
     addAndMakeVisible(playHeadTempo);
     playHeadTempo.setReadOnly(true);
 
     addAndMakeVisible(editTempo_Toggle);
-    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("editTempoToggle"), true);
+    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty("editTempo_Toggle"), true);
     editTempo_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty("editTempoToggle", editTempo_Toggle.getToggleState(), nullptr);
+        audioProcessor.stateInfo.setProperty("editTempo_Toggle", editTempo_Toggle.getToggleState(), nullptr);
         tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
     };
 
@@ -42,14 +48,19 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor (TimeAnalyzer
         audioProcessor.stateInfo.setProperty("editedTempo", tempo_Editor.getText(), nullptr);
     };
 
-    addAndMakeVisible(midiResults);
-    midiResults.setReadOnly(true);
-    midiResults.setMultiLine(true);
-    midiResults.setText(audioProcessor.stateInfo.getProperty("midiResults"));
-    midiResults.onTextChange = [&]()
+    addAndMakeVisible(midiDirectory_Editor);
+    midiDirectory_Editor.setSelectAllWhenFocused(true);
+    midiDirectory_Editor.setText(audioProcessor.stateInfo.getProperty("midiDirectory"));
+    midiDirectory_Editor.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty("midiResults", tempo_Editor.getText(), nullptr);
+        audioProcessor.stateInfo.setProperty("midiDirectory", midiDirectory_Editor.getText(), nullptr);
     };
+
+    addAndMakeVisible(setQuantizedMidiFile_Button);
+    setQuantizedMidiFile_Button.onClick = [&]() { setQuantizedMidiFile(); };
+
+    addAndMakeVisible(analyzeMidiFile_Button);
+    analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
     setSize (400, 300);
 }
@@ -70,7 +81,11 @@ void TimeAnalyzerAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
 
-    readMidiFile_Button.setBounds(bounds.removeFromBottom(30));
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+        setQuantizedMidiFile_Button.setBounds(tempoBounds.withRight(getWidth() / 2));
+        analyzeMidiFile_Button.setBounds(tempoBounds.withLeft(getWidth() / 2));
+    }
     midiDirectory_Editor.setBounds(bounds.removeFromBottom(30));
     {
         auto tempoBounds = bounds.removeFromBottom(30);
@@ -82,84 +97,111 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     midiResults.setBounds(bounds);
 }
 
-void TimeAnalyzerAudioProcessorEditor::readMidiFile()
+void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
 {
-    setNewMidiFile();
+    playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
 
-    juce::MidiFile midi;
-    juce::File readFile(currentMidiFile);
-    juce::FileInputStream inputStream(readFile);
-    if (inputStream.openedOk() && midi.readFrom(inputStream))
+    quantizedMidi.clear();
+    if (!readMidiFile(getNewMidiFile(), quantizedMidi))
     {
-        playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
-
-        double currentBpm = 1;
-        if (editTempo_Toggle.getToggleState())
-        {
-            currentBpm = tempo_Editor.getText().getDoubleValue();
-        }
-        else
-        {
-            currentBpm = audioProcessor.playHeadBpm;
-        }
-
-        std::vector<const juce::MidiMessageSequence*> sequences;
-        for (int i = 0; i < midi.getNumTracks(); i++)
-        {
-            sequences.push_back(midi.getTrack(i));
-        }
-        std::vector<juce::MidiMessageSequence::MidiEventHolder*> eventHolders;
-        for (auto sequence : sequences)
-        {
-            for (int i = 0; i < sequence->getNumEvents(); i++)
-            {
-                eventHolders.push_back(sequence->getEventPointer(i));
-            }
-        }
-        juce::String resultsString;
-        for (auto eventHolder : eventHolders)
-        {
-            if (eventHolder->message.isNoteOn())
-            {
-                resultsString += juce::String() 
-                    + "Note: " + juce::String(eventHolder->message.getNoteNumber())
-                    + ", TimeStamp: " + juce::String(eventHolder->message.getTimeStamp())
-                    + ", ms: " + juce::String(eventHolder->message.getTimeStamp() / 960 * 60 / currentBpm * 1000)
-                    + juce::newLine;
-            }
-            else if (eventHolder->message.isTempoMetaEvent())
-            {
-                resultsString += juce::String()
-                    + "getTempoSecondsPerQuarterNote: " + juce::String(eventHolder->message.getTempoSecondsPerQuarterNote())
-                    + ", getTempoMetaEventTickLength: " + juce::String(eventHolder->message.getTempoMetaEventTickLength(0)) 
-                    + juce::newLine;
-            }
-        }
-        midiResults.setText(resultsString);
+        midiResults.setText("No Midi Files Detected");
+        return;
     }
-    else
-        DBG("could not read file \"" << readFile.getFullPathName() << "\"");
+
+    juce::String results = "Quantized Midi Info: \n";
+    for (auto midi : quantizedMidi)
+    {
+        results += "Note: " + getMidiNoteName(midi.noteNumber) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+    }
+    midiResults.setText(results);
 }
 
-void TimeAnalyzerAudioProcessorEditor::setNewMidiFile()
+void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
+{
+    if (quantizedMidi.isEmpty())
+    {
+        midiResults.setText("Please Set a Quantized Midi File");
+        return;
+    }
+
+    playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
+
+    juce::Array<MidiEvent> midiToAnalyze;
+    if (!readMidiFile(getNewMidiFile(), midiToAnalyze))
+    {
+        midiResults.setText("No Midi Files Detected");
+        return;
+    }
+
+    juce::String results = "Analysis: \n";
+    for (auto midi : midiToAnalyze)
+    {
+        results += "Note: " + getMidiNoteName(midi.noteNumber) + "  ms: " + juce::String(midi.ms) + juce::newLine;
+    }
+    midiResults.setText(results);
+}
+
+juce::File TimeAnalyzerAudioProcessorEditor::getNewMidiFile()
 {
     juce::File newMidiDirectory(midiDirectory_Editor.getText().unquoted());
     if (!newMidiDirectory.exists() || !newMidiDirectory.isDirectory())
-        return;
+        return juce::File();
 
-    //find the newest created midi file
+    juce::File newestMidiFile;
     for (juce::File childFile : newMidiDirectory.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false))
     {
         if (childFile.getFileExtension() == ".mid") //is midi file?
         {
-            if (!currentMidiFile.exists())
+            if (!newestMidiFile.exists())
             {
-                currentMidiFile = childFile; //initialize first file
+                newestMidiFile = childFile; //initialize first file
                 continue;
             }
 
-            if (childFile.getCreationTime() < currentMidiFile.getCreationTime())
-                currentMidiFile = childFile;
+            if (childFile.getCreationTime() < newestMidiFile.getCreationTime())
+                newestMidiFile = childFile;
         }
     }
+    return newestMidiFile;
+}
+
+bool TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::File midiFile, juce::Array<MidiEvent>& out)
+{
+    if (!midiFile.exists())
+        return false;
+
+    double currentBpm;
+    if (editTempo_Toggle.getToggleState())
+        currentBpm = tempo_Editor.getText().getDoubleValue();
+    else
+        currentBpm = audioProcessor.playHeadBpm;
+
+    juce::MidiFile midi;
+    juce::File readFile(midiFile);
+    juce::FileInputStream inputStream(readFile);
+    if (inputStream.failedToOpen() || !midi.readFrom(inputStream))
+        return false;
+
+    for (int i = 0; i < midi.getNumTracks(); i++)
+    {
+        for (auto sequence : *midi.getTrack(i))
+        {
+            out.add(MidiEvent(*sequence, currentBpm));
+        }
+    }
+
+    return true;
+}
+
+juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(juce::MidiMessage message)
+{
+    return getMidiNoteName(message.getNoteNumber());
+}
+
+juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int noteNumber)
+{
+    if (rhythmInstrument_Toggle.getToggleState())
+        return juce::MidiMessage::getRhythmInstrumentName(noteNumber);
+
+    return juce::MidiMessage::getMidiNoteName(noteNumber, true, true, 4);
 }
