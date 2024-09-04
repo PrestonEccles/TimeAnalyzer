@@ -28,7 +28,7 @@ public:
     void timerCallback() override;
 
     //==============================================================================
-    void setQuantizedMidiFile();
+    void setQuantizedMidiFile(juce::File quantizedMidiFile);
     void analyzeMidiFile();
 
     juce::File getNewMidiFile();
@@ -36,6 +36,8 @@ public:
 
     juce::String getMidiNoteName(juce::MidiMessage message);
     juce::String getMidiNoteName(int note);
+
+    void debugTree(juce::ValueTree& tree);
 
     //==============================================================================
 
@@ -61,12 +63,13 @@ private:
     juce::TextEditor midiDirectory_Editor;
 
     juce::TextButton setQuantizedMidiFile_Button{ "Set Quantized Midi File" };
+    juce::TextButton refreshQuantizedMidi_Button{ "Refresh Quantized Midi" };
     juce::TextButton analyzeMidiFile_Button{ "Analyze Midi File" };
     juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
 
     //==============================================================================
     juce::Array<MidiEvent> quantizedMidi;
-    juce::File quantizedMidiFile;
+    juce::File m_quantizedMidiFile;
     juce::File newestMidiFile;
 
     //==============================================================================

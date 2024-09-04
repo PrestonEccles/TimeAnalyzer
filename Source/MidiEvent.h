@@ -12,21 +12,24 @@
 
 struct MidiEvent
 {
-    MidiEvent() : note(0), ms(0), ticks()
+    MidiEvent() : MidiEvent(0, 0, 0, 0)
     {
     }
-    MidiEvent(int note, double ms, double ticks) : note(note), ms(ms), ticks(ticks)
+    MidiEvent(int note, double ms, double tickStart, double tickEnd) 
+        : note(note), ms(ms), tickStart(tickStart), tickEnd(tickEnd)
     {
     }
     MidiEvent(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
         : note(eventHolder.message.getNoteNumber()),
-        ms(getMiliseconds(eventHolder.message.getTimeStamp(), bpm)), ticks(eventHolder.message.getTimeStamp())
+        ms(getMiliseconds(eventHolder.message.getTimeStamp(), bpm)),
+        tickStart(eventHolder.message.getTimeStamp()),
+        tickEnd(eventHolder.noteOffObject->message.getTimeStamp())
     {
     }
 
-    double getMiliseconds(double ticks, double bpm)
+    double getMiliseconds(double tickStart, double bpm)
     {
-        double beatPosition = ticks / 960;
+        double beatPosition = tickStart / 960;
         double beatSecondsLength = 60 / bpm;
         double midiSeconds = beatPosition * beatSecondsLength;
         return std::round(midiSeconds * 1000);
@@ -34,5 +37,6 @@ struct MidiEvent
 
     int note;
     double ms;
-    double ticks;
+    double tickStart;
+    double tickEnd;
 };
