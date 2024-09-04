@@ -67,11 +67,14 @@ private:
     juce::TextEditor measureRangeLength_Editor;
 
     juce::TextEditor midiDirectory_Editor;
+    juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
+    juce::TextButton detectNewMidiFrequency_Title{ "Frequency (ms):" };
+    juce::TextEditor detectNewMidiFrequency_Editor;
+    int m_msDetectNewMidiFrequency;
 
     juce::TextButton setQuantizedMidiFile_Button{ "Set Quantized Midi File" };
     juce::TextButton refreshQuantizedMidi_Button{ "Refresh Quantized Midi" };
     juce::TextButton analyzeMidiFile_Button{ "Analyze Midi File" };
-    juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
 
     //==============================================================================
     juce::Array<MidiEvent> quantizedMidi;

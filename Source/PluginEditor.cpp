@@ -13,7 +13,7 @@
 
 //==============================================================================
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+    : AudioProcessorEditor(&p), audioProcessor(p), m_msDetectNewMidiFrequency(1000)
 {
     addAndMakeVisible(m_midiDisplay);
     m_midiDisplay.setVisible(true);
@@ -151,19 +151,51 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     addAndMakeVisible(analyzeMidiFile_Button);
     analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
 
-    addAndMakeVisible(detectNewMidi_Toggle);
-    detectNewMidi_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidi_Toggle)), true);
-    detectNewMidi_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidi_Toggle), detectNewMidi_Toggle.getToggleState(), nullptr);
+        addAndMakeVisible(detectNewMidi_Toggle);
+        detectNewMidi_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidi_Toggle)), true);
+        detectNewMidi_Toggle.onClick = [&]()
+        {
+            bool newState = detectNewMidi_Toggle.getToggleState();
+            audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidi_Toggle), newState, nullptr);
+            detectNewMidiFrequency_Title.setVisible(newState);
+            detectNewMidiFrequency_Editor.setVisible(newState);
 
-        if (!detectNewMidi_Toggle.getToggleState())
-            stopTimer();
-        else if (!isTimerRunning())
-            startTimer(1000);
-    };
-    if (detectNewMidi_Toggle.getToggleState())
-        startTimer(1000);
+            if (!newState)
+                stopTimer();
+            else if (!isTimerRunning())
+                startTimer(m_msDetectNewMidiFrequency);
+        };
+
+        addAndMakeVisible(detectNewMidiFrequency_Title);
+        detectNewMidiFrequency_Title.setVisible(detectNewMidi_Toggle.getToggleState());
+
+        addAndMakeVisible(detectNewMidiFrequency_Editor);
+        detectNewMidiFrequency_Editor.setSelectAllWhenFocused(true);
+        detectNewMidiFrequency_Editor.setVisible(detectNewMidi_Toggle.getToggleState());
+
+        auto loadFrequency = audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidiFrequency_Editor));
+        if (loadFrequency && (int)loadFrequency > 0)
+            m_msDetectNewMidiFrequency = loadFrequency;
+        detectNewMidiFrequency_Editor.setText(juce::String(m_msDetectNewMidiFrequency));
+
+        detectNewMidiFrequency_Editor.onTextChange = [&]()
+        {
+            int newFrequency = detectNewMidiFrequency_Editor.getText().getIntValue();
+            if (newFrequency > 0 && newFrequency != m_msDetectNewMidiFrequency)
+            {
+                if (isTimerRunning())
+                    stopTimer();
+                startTimer(newFrequency);
+
+                m_msDetectNewMidiFrequency = newFrequency;
+                audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidiFrequency_Editor), newFrequency, nullptr);
+            }
+        };
+
+        if (detectNewMidi_Toggle.getToggleState())
+            startTimer(m_msDetectNewMidiFrequency);
+    }
 
     setResizable(true, true);
 
@@ -200,17 +232,26 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
 
     {
-        int divisionsX = 4;
+        int divisionsX = 3;
         auto tempoBounds = bounds.removeFromBottom(30);
         setQuantizedMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX));
         refreshQuantizedMidi_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
                                               .withX(setQuantizedMidiFile_Button.getRight()));
         analyzeMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
                                               .withX(refreshQuantizedMidi_Button.getRight()));
-        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(getWidth() / 3)
-                                              .withX(analyzeMidiFile_Button.getRight()));
     }
-    midiDirectory_Editor.setBounds(bounds.removeFromBottom(30));
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+        midiDirectory_Editor.setBounds(tempoBounds.withWidth(getWidth() / 3));
+
+        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(200).withX(midiDirectory_Editor.getRight() + 10));
+
+        detectNewMidiFrequency_Title.setBounds(tempoBounds.withSize(0, 25)
+                                               .withX(detectNewMidi_Toggle.getRight()));
+        detectNewMidiFrequency_Title.changeWidthToFitText();
+        detectNewMidiFrequency_Editor.setBounds(tempoBounds.withSize(50, 25)
+                                                .withX(detectNewMidiFrequency_Title.getRight()));
+    }
     {
         auto tempoBounds = bounds.removeFromBottom(30);
         playHeadTempo.setBounds(tempoBounds.withSize(100, 25));
