@@ -63,6 +63,22 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
                                              drumNotes_Toggle.getToggleState(), nullptr);
     };
 
+    addAndMakeVisible(msTimeThreshold_Title);
+    addAndMakeVisible(msTimeThreshold_Editor);
+    msTimeThreshold_Editor.setSelectAllWhenFocused(true);
+    auto loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
+    if (loadMSTimeThreshold)
+    {
+        m_midiDisplay.msTimeThreshold = loadMSTimeThreshold;
+        msTimeThreshold_Editor.setText(loadMSTimeThreshold);
+    }
+    msTimeThreshold_Editor.onTextChange = [&]()
+    {
+        audioProcessor.stateInfo.setProperty(NAME_OF(msTimeThreshold_Editor), msTimeThreshold_Editor.getText(), nullptr);
+        m_midiDisplay.msTimeThreshold = msTimeThreshold_Editor.getText().getDoubleValue();
+        m_midiDisplay.repaint();
+    };
+
     addAndMakeVisible(playHeadTempo);
     playHeadTempo.setReadOnly(true);
 
@@ -121,18 +137,11 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
         setSize(500, 500);
 
 
-    //load quantized midi
-    for (auto midi : audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)))
+    juce::String quantizedMidiFilePath = audioProcessor.stateInfo.getProperty(NAME_OF(m_quantizedMidiFile));
+    if (quantizedMidiFilePath.isNotEmpty())
     {
-        quantizedMidi.add(MidiEvent(midi.getProperty(NAME_OF(MidiEvent::note)), 
-                                    midi.getProperty(NAME_OF(MidiEvent::ms)),
-                                    midi.getProperty(NAME_OF(MidiEvent::tickStart)),
-                                    midi.getProperty(NAME_OF(MidiEvent::tickEnd))
-                                    ));
+        setQuantizedMidiFile(juce::File(quantizedMidiFilePath));
     }
-
-    if (!quantizedMidi.isEmpty())
-        m_midiDisplay.setQuantizedMidi(quantizedMidi, audioProcessor.getPlayHead());
 }
 
 TimeAnalyzerAudioProcessorEditor::~TimeAnalyzerAudioProcessorEditor()
@@ -155,10 +164,15 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
 
     {
+        int divisionsX = 4;
         auto tempoBounds = bounds.removeFromBottom(30);
-        setQuantizedMidiFile_Button.setBounds(tempoBounds.withRight(getWidth() / 3));
-        analyzeMidiFile_Button.setBounds(tempoBounds.withLeft(setQuantizedMidiFile_Button.getRight()).withWidth(getWidth() / 3));
-        detectNewMidi_Toggle.setBounds(tempoBounds.withLeft(analyzeMidiFile_Button.getRight()).withWidth(getWidth() / 3));
+        setQuantizedMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX));
+        refreshQuantizedMidi_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+                                              .withX(setQuantizedMidiFile_Button.getRight()));
+        analyzeMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+                                              .withX(refreshQuantizedMidi_Button.getRight()));
+        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(getWidth() / 3)
+                                              .withX(analyzeMidiFile_Button.getRight()));
     }
     midiDirectory_Editor.setBounds(bounds.removeFromBottom(30));
     {
@@ -169,8 +183,11 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     }
     {
         auto tempoBounds = bounds.removeFromBottom(30);
-        drumNotes_Toggle.setBounds(tempoBounds.withRight(getWidth() / 2));
-        fontSize_Slider.setBounds(tempoBounds.withLeft(getWidth() / 2));
+        drumNotes_Toggle.setBounds(tempoBounds.withWidth(100));
+        msTimeThreshold_Title.setBounds(tempoBounds.withSize(0, 25).withX(drumNotes_Toggle.getRight() + 10));
+        msTimeThreshold_Title.changeWidthToFitText();
+        msTimeThreshold_Editor.setBounds(tempoBounds.withSize(50, 25).withX(msTimeThreshold_Title.getRight()));
+        fontSize_Slider.setBounds(tempoBounds.withWidth(300).withX(msTimeThreshold_Editor.getRight() + 10));
     }
     m_midiDisplay.setBounds(bounds);
     midiResults.setBounds(bounds);
@@ -211,6 +228,7 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile(juce::File quantized
         return;
     }
     m_quantizedMidiFile = quantizedMidiFile;
+    audioProcessor.stateInfo.setProperty(NAME_OF(m_quantizedMidiFile), m_quantizedMidiFile.getFullPathName(), nullptr);
 
     juce::String results = "Quantized Midi Info: \n";
     for (const MidiEvent& midi : quantizedMidi)
@@ -222,25 +240,6 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile(juce::File quantized
     midiResults.setText(results);
 
     m_midiDisplay.setQuantizedMidi(quantizedMidi, audioProcessor.getPlayHead());
-
-
-    //save quantized midi into state info
-    juce::ValueTree quantizedMidiTree(NAME_OF(quantizedMidi));
-    for (const MidiEvent& midi : quantizedMidi)
-    {
-        juce::ValueTree midiValue(NAME_OF(MidiEvent));
-        midiValue.setProperty(NAME_OF(MidiEvent::note), midi.note, nullptr);
-        midiValue.setProperty(NAME_OF(MidiEvent::ms), midi.ms, nullptr);
-        midiValue.setProperty(NAME_OF(MidiEvent::tickStart), midi.tickStart, nullptr);
-        midiValue.setProperty(NAME_OF(MidiEvent::tickEnd), midi.tickEnd, nullptr);
-        quantizedMidiTree.appendChild(midiValue, nullptr);
-    }
-
-    //clear existing quantized midi trees
-    while (audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)).isValid())
-        audioProcessor.stateInfo.removeChild(audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)), nullptr);
-
-    audioProcessor.stateInfo.appendChild(quantizedMidiTree, nullptr); //save
 }
 
 void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
@@ -261,7 +260,7 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
     }
 
     juce::String results = "Analysis: \n";
-    for (const MidiEvent& midi : midiToAnalyze)
+    for (MidiEvent& midi : midiToAnalyze)
     {
         double lowestDifference = midi.ms - quantizedMidi[0].ms;
         int closestQuantizedIndex = 0;
@@ -273,7 +272,7 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
                 closestQuantizedIndex = i;
             }
         }
-
+        midi.msDifference = lowestDifference;
         results += "Note: " + getMidiNoteName(midi.note) + ", ms Diff: " + juce::String(lowestDifference) + juce::newLine;
     }
     midiResults.setText(results);

@@ -17,12 +17,22 @@ public:
     //==============================================================================
     void setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi, juce::AudioPlayHead* playHead);
     void setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi);
+    void clearAnalyzedMidi(bool repaintMidi)
+    {
+        m_analyzedMidi.clear();
+        if (repaintMidi)
+            repaint();
+    }
+
+    //==============================================================================
+    //threshold for when a midi note is considered "on time" and not late or early
+    double msTimeThreshold;
 
     //==============================================================================
 
 private:
     //==============================================================================
-    int beatSubDivisions;
+    int m_beatSubDivisions;
     double m_beatsToShow;
     int m_lowestNote;
     int m_highestNote;
@@ -31,6 +41,10 @@ private:
     juce::Array<MidiEvent> m_analyzedMidi;
 
     float noteDisplayWidth;
+    const juce::Colour quantizedColor{ 0xffbbbbbb };
+    const juce::Colour onTimeColor{ 0xff44dd44 };
+    const juce::Colour lateColor{ 0xffdd4444 };
+    const juce::Colour earlyColor{ 0xffdddd44 };
 
     //==============================================================================
 };

@@ -5,26 +5,26 @@ const double g_quarterNoteTicks = 960;
 
 //==============================================================================
 
-MidiDisplay::MidiDisplay() : m_beatsToShow(0), noteDisplayWidth(1), beatSubDivisions(4)
+MidiDisplay::MidiDisplay() : m_beatsToShow(0), noteDisplayWidth(2), m_beatSubDivisions(4), msTimeThreshold(20)
 {
 }
 void MidiDisplay::paint(juce::Graphics& g)
 {
 	//measure grid
 	g.setColour(juce::Colours::grey);
-	for (int i = 0; i <= m_beatsToShow * beatSubDivisions; i++)
+	for (int i = 0; i <= m_beatsToShow * m_beatSubDivisions; i++)
 	{
 		float lineThickness;
-		if (i % (m_timeSignature.numerator * beatSubDivisions) == 0) //first beat in the measure
+		if (i % (m_timeSignature.numerator * m_beatSubDivisions) == 0) //first beat in the measure
 			lineThickness = 3.f;
-		else if (i % beatSubDivisions == 0)
+		else if (i % m_beatSubDivisions == 0)
 			lineThickness = 2.f;
-		else if (i % (beatSubDivisions / 2) == 0)
+		else if (i % (m_beatSubDivisions / 2) == 0)
 			lineThickness = 1.f;
 		else
 			lineThickness = 0.5f;
 
-		int beatPosition = ((double) i / beatSubDivisions) / m_beatsToShow * getWidth();
+		int beatPosition = ((double) i / m_beatSubDivisions) / m_beatsToShow * getWidth();
 		g.drawLine(beatPosition, 0, beatPosition, getHeight(), lineThickness);
 	}
 
@@ -32,7 +32,7 @@ void MidiDisplay::paint(juce::Graphics& g)
 	float noteDisplayHeight = getHeight() / noteRangeDistance;
 
 	//quantized midi hits
-	g.setColour(juce::Colours::white);
+	g.setColour(quantizedColor);
 	for (const MidiEvent& midi : m_quantizedMidi)
 	{
 		float beat = midi.tickStart / g_quarterNoteTicks;
@@ -42,9 +42,15 @@ void MidiDisplay::paint(juce::Graphics& g)
 	}
 
 	//analyze midi hits
-	g.setColour(juce::Colours::greenyellow);
 	for (const MidiEvent& midi : m_analyzedMidi)
 	{
+		if (std::abs(midi.msDifference) <= msTimeThreshold)
+			g.setColour(onTimeColor);
+		else if (midi.msDifference > 0) //late
+			g.setColour(lateColor);
+		else //early
+			g.setColour(earlyColor);
+
 		float beat = midi.tickStart / g_quarterNoteTicks;
 		float startTimePosition = beat / m_beatsToShow * getWidth();
 		float notePosition = (m_highestNote - midi.note) * noteDisplayHeight;
@@ -58,6 +64,7 @@ void MidiDisplay::resized()
 
 void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi, juce::AudioPlayHead* playHead)
 {
+	m_analyzedMidi.clear();
 	m_quantizedMidi = newQuantizedMidi; //copy
 
 	double lastTick = 0;

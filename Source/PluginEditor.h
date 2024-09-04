@@ -53,6 +53,8 @@ private:
     std::function<void()> saveMidiResultsCallback;
 
     juce::ToggleButton drumNotes_Toggle{ "Is Drums?" };
+    juce::TextButton msTimeThreshold_Title{ "Time Threshold (ms):" };
+    juce::TextEditor msTimeThreshold_Editor;
     juce::Slider fontSize_Slider;
     juce::Font currentFont;
 
