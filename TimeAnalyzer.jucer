@@ -6,13 +6,16 @@
               cppLanguageStandard="17">
   <MAINGROUP id="sCE93I" name="TimeAnalyzer">
     <GROUP id="{81AB3843-591C-E97A-EB1B-E31EF102644A}" name="Source">
+      <FILE id="FVfQ5C" name="MidiDisplay.cpp" compile="1" resource="0" file="Source/MidiDisplay.cpp"/>
+      <FILE id="dy5e53" name="MidiDisplay.h" compile="0" resource="0" file="Source/MidiDisplay.h"/>
+      <FILE id="rpGq8q" name="MidiEvent.h" compile="0" resource="0" file="Source/MidiEvent.h"/>
+      <FILE id="VgxbfK" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="tVf5HY" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="aTrvW4" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="kT7zjD" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
-      <FILE id="VgxbfK" name="PluginEditor.cpp" compile="1" resource="0"
-            file="Source/PluginEditor.cpp"/>
-      <FILE id="tVf5HY" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>

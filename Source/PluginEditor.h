@@ -10,6 +10,8 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "MidiEvent.h"
+#include "MidiDisplay.h"
 
 //==============================================================================
 /**
@@ -26,25 +28,6 @@ public:
     void timerCallback() override;
 
     //==============================================================================
-    struct MidiEvent
-    {
-        MidiEvent() : note(0), ms(0) {}
-        MidiEvent(int note, double ms) : note(note), ms(ms) {}
-        MidiEvent(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
-            : note(eventHolder.message.getNoteNumber()), ms(getMiliseconds(eventHolder, bpm)) {}
-
-        double getMiliseconds(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
-        {
-            double beatPosition = eventHolder.message.getTimeStamp() / 960;
-            double beatSecondsLength = 60 / bpm;
-            double midiSeconds = beatPosition * beatSecondsLength;
-            return std::round(midiSeconds * 1000);
-        }
-
-        int note;
-        double ms;
-    };
-
     void setQuantizedMidiFile();
     void analyzeMidiFile();
 
@@ -63,7 +46,7 @@ private:
     TimeAnalyzerAudioProcessor& audioProcessor;
 
     //==============================================================================
-
+    MidiDisplay m_midiDisplay;
     juce::TextEditor midiResults;
     std::function<void()> saveMidiResultsCallback;
 

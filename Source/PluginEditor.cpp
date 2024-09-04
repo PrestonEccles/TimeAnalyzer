@@ -15,6 +15,9 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
+    addAndMakeVisible(m_midiDisplay);
+    m_midiDisplay.setVisible(true);
+
     addAndMakeVisible(midiResults);
     midiResults.setReadOnly(true);
     midiResults.setMultiLine(true);
@@ -24,6 +27,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
         audioProcessor.stateInfo.setProperty(NAME_OF(midiResults), midiResults.getText(), nullptr);
     };
     midiResults.onTextChange = saveMidiResultsCallback;
+    midiResults.setVisible(false);
 
     currentFont = midiResults.getFont();
     addAndMakeVisible(fontSize_Slider);
@@ -117,7 +121,8 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     //load quantized midi
     for (auto midi : audioProcessor.stateInfo.getChildWithName(NAME_OF(quantizedMidi)))
     {
-        quantizedMidi.add(MidiEvent(midi.getProperty(NAME_OF(MidiEvent::note)), midi.getProperty(NAME_OF(MidiEvent::ms))));
+        quantizedMidi.add(MidiEvent(midi.getProperty(NAME_OF(MidiEvent::note)), 
+                                    midi.getProperty(NAME_OF(MidiEvent::ms)), midi.getProperty(NAME_OF(MidiEvent::ticks))));
     }
 }
 
@@ -158,7 +163,7 @@ void TimeAnalyzerAudioProcessorEditor::resized()
         drumNotes_Toggle.setBounds(tempoBounds.withRight(getWidth() / 2));
         fontSize_Slider.setBounds(tempoBounds.withLeft(getWidth() / 2));
     }
-
+    m_midiDisplay.setBounds(bounds);
     midiResults.setBounds(bounds);
 }
 
@@ -166,6 +171,9 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
 {
     if (!quantizedMidiFile.exists() && quantizedMidi.isEmpty())
         return;
+
+    if (audioProcessor.getPlayHead()->getPosition()->getIsRecording())
+        return; //the host might be recording the newest midi file
 
     if (quantizedMidi.isEmpty())
     {
@@ -178,9 +186,6 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
     {
         return; //no new midi files
     }
-
-    if (audioProcessor.getPlayHead()->getPosition()->getIsRecording())
-        return; //the host might be recording the newest midi file
 
     newestMidiFile = newMidiFile;
     analyzeMidiFile();
@@ -199,7 +204,7 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     }
 
     juce::String results = "Quantized Midi Info: \n";
-    for (auto midi : quantizedMidi)
+    for (const MidiEvent& midi : quantizedMidi)
     {
         results += "Note: " + getMidiNoteName(midi.note)
             + ", num: " + juce::String(midi.note)
@@ -207,13 +212,17 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile()
     }
     midiResults.setText(results);
 
+    m_midiDisplay.setQuantizedMidi(quantizedMidi, audioProcessor.getPlayHead());
+
+
     //save quantized midi into state info
     juce::ValueTree quantizedMidiTree(NAME_OF(quantizedMidi));
-    for (auto midi : quantizedMidi)
+    for (const MidiEvent& midi : quantizedMidi)
     {
         juce::ValueTree midiValue(NAME_OF(MidiEvent));
         midiValue.setProperty(NAME_OF(MidiEvent::note), midi.note, nullptr);
         midiValue.setProperty(NAME_OF(MidiEvent::ms), midi.ms, nullptr);
+        midiValue.setProperty(NAME_OF(MidiEvent::ticks), midi.ticks, nullptr);
         quantizedMidiTree.appendChild(midiValue, nullptr);
     }
 
@@ -242,7 +251,7 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
     }
 
     juce::String results = "Analysis: \n";
-    for (MidiEvent midi : midiToAnalyze)
+    for (const MidiEvent& midi : midiToAnalyze)
     {
         double lowestDifference = midi.ms - quantizedMidi[0].ms;
         int closestQuantizedIndex = 0;
