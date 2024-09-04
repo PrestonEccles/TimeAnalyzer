@@ -24,21 +24,45 @@ public:
             repaint();
     }
 
+    //set threshold for when a midi note is considered "on time" and not late or early
+    void setTimeThreshold(double ms, bool repaintMidi)
+    {
+        if (ms < 0)
+            return; //not valid
+
+        m_msTimeThreshold = ms;
+        if (repaintMidi)
+            repaint();
+    }
+
+    //the measures that the midi display should show
+    void setMeasureRange(int measureStart, int length, bool repaintMidi)
+    {
+        m_beatStart = measureStart * m_timeSignature.numerator;
+        m_beatEnd = (measureStart + length) * m_timeSignature.numerator;
+        if (repaintMidi)
+            repaint();
+    }
+
     //==============================================================================
-    //threshold for when a midi note is considered "on time" and not late or early
-    double msTimeThreshold;
 
     //==============================================================================
 
 private:
     //==============================================================================
-    int m_beatSubDivisions;
-    double m_beatsToShow;
-    int m_lowestNote;
-    int m_highestNote;
-    juce::AudioPlayHead::TimeSignature m_timeSignature;
     juce::Array<MidiEvent> m_quantizedMidi;
     juce::Array<MidiEvent> m_analyzedMidi;
+
+    juce::AudioPlayHead::TimeSignature m_timeSignature;
+    int m_beatSubDivisions;
+    double m_quantizedBeatRange;
+    int m_beatStart;
+    int m_beatEnd;
+    int m_lowestNote;
+    int m_highestNote;
+
+    //threshold for when a midi note is considered "on time" and not late or early
+    double m_msTimeThreshold;
 
     float noteDisplayWidth;
     const juce::Colour quantizedColor{ 0xffbbbbbb };

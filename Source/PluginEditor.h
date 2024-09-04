@@ -61,6 +61,10 @@ private:
     juce::TextEditor playHeadTempo;
     juce::ToggleButton editTempo_Toggle{ "Edit Tempo" };
     juce::TextEditor tempo_Editor;
+    juce::TextButton measureStart_Title{ "Measure Start:" };
+    juce::TextEditor measureStart_Editor;
+    juce::TextButton measureRangeLength_Title{ "Measure Range:" };
+    juce::TextEditor measureRangeLength_Editor;
 
     juce::TextEditor midiDirectory_Editor;
 

@@ -69,34 +69,70 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     auto loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
     if (loadMSTimeThreshold)
     {
-        m_midiDisplay.msTimeThreshold = loadMSTimeThreshold;
+        m_midiDisplay.setTimeThreshold(loadMSTimeThreshold, false);
         msTimeThreshold_Editor.setText(loadMSTimeThreshold);
     }
     msTimeThreshold_Editor.onTextChange = [&]()
     {
         audioProcessor.stateInfo.setProperty(NAME_OF(msTimeThreshold_Editor), msTimeThreshold_Editor.getText(), nullptr);
-        m_midiDisplay.msTimeThreshold = msTimeThreshold_Editor.getText().getDoubleValue();
+        m_midiDisplay.setTimeThreshold(msTimeThreshold_Editor.getText().getDoubleValue(), false);
         m_midiDisplay.repaint();
     };
 
-    addAndMakeVisible(playHeadTempo);
-    playHeadTempo.setReadOnly(true);
-
-    addAndMakeVisible(editTempo_Toggle);
-    editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(editTempo_Toggle)), true);
-    editTempo_Toggle.onClick = [&]()
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(editTempo_Toggle), editTempo_Toggle.getToggleState(), nullptr);
+        addAndMakeVisible(playHeadTempo);
+        playHeadTempo.setReadOnly(true);
+
+
+        addAndMakeVisible(editTempo_Toggle);
+        editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(editTempo_Toggle)), true);
+        editTempo_Toggle.onClick = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(editTempo_Toggle), editTempo_Toggle.getToggleState(), nullptr);
+            tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
+        };
+
+        addAndMakeVisible(tempo_Editor);
+        tempo_Editor.setSelectAllWhenFocused(true);
         tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
-    };
+        tempo_Editor.setText(audioProcessor.stateInfo.getProperty(NAME_OF(tempo_Editor)));
+        tempo_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(tempo_Editor), tempo_Editor.getText(), nullptr);
+        };
+    }
 
-    addAndMakeVisible(tempo_Editor);
-    tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
-    tempo_Editor.setText(audioProcessor.stateInfo.getProperty(NAME_OF(tempo_Editor)));
-    tempo_Editor.onTextChange = [&]()
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(tempo_Editor), tempo_Editor.getText(), nullptr);
-    };
+        auto measureStart = audioProcessor.stateInfo.getProperty(NAME_OF(measureStart_Editor));
+        auto measureLength = audioProcessor.stateInfo.getProperty(NAME_OF(measureRangeLength_Editor));
+        if (measureStart && measureLength)
+        {
+            measureStart_Editor.setText(measureStart);
+            measureRangeLength_Editor.setText(measureLength);
+            m_midiDisplay.setMeasureRange(measureStart, measureLength, false);
+        }
+
+        addAndMakeVisible(measureStart_Title);
+        addAndMakeVisible(measureStart_Editor);
+        measureStart_Editor.setSelectAllWhenFocused(true);
+        measureStart_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), measureStart_Editor.getText(), nullptr);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(), 
+                                          measureRangeLength_Editor.getText().getIntValue(), true);
+        };
+
+        addAndMakeVisible(measureRangeLength_Title);
+        addAndMakeVisible(measureRangeLength_Editor);
+        measureRangeLength_Editor.setSelectAllWhenFocused(true);
+        measureRangeLength_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(measureRangeLength_Editor), 
+                                                 measureRangeLength_Editor.getText(), nullptr);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
+                                          measureRangeLength_Editor.getText().getIntValue(), true);
+        };
+    }
 
     addAndMakeVisible(midiDirectory_Editor);
     midiDirectory_Editor.setSelectAllWhenFocused(true);
@@ -178,15 +214,25 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     {
         auto tempoBounds = bounds.removeFromBottom(30);
         playHeadTempo.setBounds(tempoBounds.withSize(100, 25));
-        editTempo_Toggle.setBounds(tempoBounds.withLeft(playHeadTempo.getRight()).withSize(100, 25));
-        tempo_Editor.setBounds(tempoBounds.withLeft(editTempo_Toggle.getRight()).withSize(100, 25));
+        editTempo_Toggle.setBounds(tempoBounds.withSize(100, 25).withX(playHeadTempo.getRight() + 10));
+        tempo_Editor.setBounds(tempoBounds.withSize(100, 25).withX(editTempo_Toggle.getRight()));
+
+        measureStart_Title.setBounds(tempoBounds.withSize(0, 25).withX(tempo_Editor.getRight() + 10));
+        measureStart_Title.changeWidthToFitText();
+        measureStart_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureStart_Title.getRight()));
+
+        measureRangeLength_Title.setBounds(tempoBounds.withSize(0, 25).withX(measureStart_Editor.getRight() + 10));
+        measureRangeLength_Title.changeWidthToFitText();
+        measureRangeLength_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureRangeLength_Title.getRight()));
     }
     {
         auto tempoBounds = bounds.removeFromBottom(30);
         drumNotes_Toggle.setBounds(tempoBounds.withWidth(100));
+
         msTimeThreshold_Title.setBounds(tempoBounds.withSize(0, 25).withX(drumNotes_Toggle.getRight() + 10));
         msTimeThreshold_Title.changeWidthToFitText();
         msTimeThreshold_Editor.setBounds(tempoBounds.withSize(50, 25).withX(msTimeThreshold_Title.getRight()));
+
         fontSize_Slider.setBounds(tempoBounds.withWidth(300).withX(msTimeThreshold_Editor.getRight() + 10));
     }
     m_midiDisplay.setBounds(bounds);
@@ -198,7 +244,7 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
     if (!m_quantizedMidiFile.exists() && quantizedMidi.isEmpty())
         return;
 
-    if (audioProcessor.getPlayHead()->getPosition()->getIsRecording())
+    if (audioProcessor.getPlayHead() != nullptr && audioProcessor.getPlayHead()->getPosition()->getIsRecording())
         return; //the host might be recording the newest midi file
 
     if (quantizedMidi.isEmpty())
