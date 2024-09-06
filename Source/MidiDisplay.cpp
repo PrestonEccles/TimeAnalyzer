@@ -6,7 +6,7 @@ const double g_quarterNoteTicks = 960;
 //==============================================================================
 
 MidiDisplay::MidiDisplay() 
-	: m_quantizedBeatRange(0), noteDisplayWidth(2), m_beatSubDivisions(4), 
+	: m_quantizedBeatRange(0), noteDisplayWidth(2), analyzedNoteDisplayWidth(4), m_beatSubDivisions(4),
 	m_msTimeThreshold(20), m_beatStart(0), m_beatEnd(0)
 {
 	m_timeSignature.numerator = 4;
@@ -14,6 +14,10 @@ MidiDisplay::MidiDisplay()
 }
 void MidiDisplay::paint(juce::Graphics& g)
 {
+	int displayPadding = 100;
+	int displayWidth = getWidth() - displayPadding;
+	int displayOffset = displayPadding / 2;
+
 	static int repaintCounter = 0;
 	repaintCounter++;
 	DBG("Repainted: " << repaintCounter);
@@ -45,7 +49,7 @@ void MidiDisplay::paint(juce::Graphics& g)
 		else
 			lineThickness = 0.5f;
 
-		int beatPosition = ((double) i / m_beatSubDivisions) / beatRange * getWidth();
+		int beatPosition = ((double) i / m_beatSubDivisions) / beatRange * displayWidth + displayOffset;
 		g.drawLine(beatPosition, 0, beatPosition, getHeight(), lineThickness);
 	}
 
@@ -57,13 +61,11 @@ void MidiDisplay::paint(juce::Graphics& g)
 	for (const MidiEvent& midi : m_quantizedMidi)
 	{
 		//relative to the display range rather than the midi file
-		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart;
-		if (relativeBeat < 0 || relativeBeat > beatRange)
-			continue; //out of display range
+		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart; 
 
-		float startTimePosition = relativeBeat / beatRange * getWidth();
-		float notePosition = (m_highestNote - midi.note) * noteDisplayHeight;
-		g.fillRect(startTimePosition, notePosition, noteDisplayWidth, noteDisplayHeight);
+		float startTimePosition = relativeBeat / beatRange * displayWidth + displayOffset;
+		float pitchPosition = (m_highestNote - midi.note) * noteDisplayHeight;
+		g.fillRect(startTimePosition, pitchPosition, noteDisplayWidth, noteDisplayHeight);
 	}
 
 	//analyze midi hits
@@ -77,13 +79,11 @@ void MidiDisplay::paint(juce::Graphics& g)
 			g.setColour(earlyColor);
 
 		//relative to the display range rather than the midi file
-		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart;
-		if (relativeBeat < 0 || relativeBeat > beatRange)
-			continue; //out of display range
+		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart; 
 
-		float startTimePosition = relativeBeat / beatRange * getWidth();
-		float notePosition = (m_highestNote - midi.note) * noteDisplayHeight;
-		g.fillRect(startTimePosition, notePosition, noteDisplayWidth, noteDisplayHeight);
+		float startTimePosition = relativeBeat / beatRange * displayWidth + displayOffset;
+		float pitchPosition = (m_highestNote - midi.note) * noteDisplayHeight;
+		g.fillRect(startTimePosition, pitchPosition, analyzedNoteDisplayWidth, noteDisplayHeight);
 	}
 }
 

@@ -65,10 +65,11 @@ private:
     double m_msTimeThreshold;
 
     float noteDisplayWidth;
+    float analyzedNoteDisplayWidth;
     const juce::Colour quantizedColor{ 0xffbbbbbb };
     const juce::Colour onTimeColor{ 0xff44dd44 };
     const juce::Colour lateColor{ 0xffdd4444 };
-    const juce::Colour earlyColor{ 0xffdddd44 };
+    const juce::Colour earlyColor{ 0xffd49306 };
 
     //==============================================================================
 };
