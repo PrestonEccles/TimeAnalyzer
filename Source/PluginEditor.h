@@ -32,12 +32,16 @@ public:
     void analyzeMidiFile();
 
     juce::File getNewMidiFile();
-    bool readMidiFile(juce::File midiFile, juce::Array<MidiEvent>& out);
+    bool getMidiFile(juce::File fileOfMidi, juce::MidiFile& out);
+    void readMidiFile(juce::MidiFile midiFile, juce::Array<MidiEvent>& out);
 
     juce::String getMidiNoteName(juce::MidiMessage message);
     juce::String getMidiNoteName(int note);
 
     void debugTree(juce::ValueTree& tree);
+
+    //==============================================================================
+    void loadStateInfo();
 
     //==============================================================================
 
@@ -70,6 +74,7 @@ private:
     juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
     juce::TextButton detectNewMidiFrequency_Title{ "Frequency (ms):" };
     juce::TextEditor detectNewMidiFrequency_Editor;
+    juce::TextEditor detectNewMidiLog;
     int m_msDetectNewMidiFrequency;
 
     juce::TextButton setQuantizedMidiFile_Button{ "Set Quantized Midi File" };
@@ -80,6 +85,7 @@ private:
     juce::Array<MidiEvent> quantizedMidi;
     juce::File m_quantizedMidiFile;
     juce::File newestMidiFile;
+    juce::MidiFile midiFileToAnalyze;
 
     //==============================================================================
 

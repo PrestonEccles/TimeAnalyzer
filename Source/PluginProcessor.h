@@ -60,6 +60,7 @@ public:
     double playHeadBpm;
 
     juce::ValueTree stateInfo{ "TimeAnalyzer" };
+    std::function<void()> stateLoadedCallback;
 
     //==============================================================================
 

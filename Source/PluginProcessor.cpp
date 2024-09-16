@@ -164,6 +164,8 @@ void TimeAnalyzerAudioProcessor::setStateInformation (const void* data, int size
     if (xmlState.get() != nullptr)
         if (xmlState->hasTagName(stateInfo.getType()))
             stateInfo = juce::ValueTree::fromXml(*xmlState);
+    if (stateLoadedCallback)
+        stateLoadedCallback();
 }
 
 //==============================================================================
