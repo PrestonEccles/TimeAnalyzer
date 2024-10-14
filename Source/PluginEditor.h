@@ -29,6 +29,7 @@ public:
 
     //==============================================================================
     void setQuantizedMidiFile(juce::File quantizedMidiFile);
+    //analyzes "midiFileToAnalyze"
     void analyzeMidiFile();
 
     juce::File getNewMidiFile();

@@ -66,8 +66,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     msTimeThreshold_Editor.onTextChange = [&]()
     {
         audioProcessor.stateInfo.setProperty(NAME_OF(msTimeThreshold_Editor), msTimeThreshold_Editor.getText(), nullptr);
-        m_midiDisplay.setTimeThreshold(msTimeThreshold_Editor.getText().getDoubleValue(), false);
-        m_midiDisplay.repaint();
+        m_midiDisplay.setTimeThreshold(msTimeThreshold_Editor.getText().getDoubleValue(), true);
     };
 
     {
@@ -128,7 +127,17 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     refreshQuantizedMidi_Button.onClick = [&]() { setQuantizedMidiFile(m_quantizedMidiFile); };
 
     addAndMakeVisible(analyzeMidiFile_Button);
-    analyzeMidiFile_Button.onClick = [&]() { analyzeMidiFile(); };
+    analyzeMidiFile_Button.onClick = [&]()
+    {
+        juce::File newMidiFile = getNewMidiFile();
+        if (!getMidiFile(newMidiFile, midiFileToAnalyze))
+        {
+            detectNewMidiLog.setText("can't read midi file");
+            return;
+        }
+        newestMidiFile = newMidiFile;
+        analyzeMidiFile();
+    };
 
     {
         addAndMakeVisible(detectNewMidi_Toggle);
@@ -258,7 +267,8 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
     if (!m_quantizedMidiFile.exists() && quantizedMidi.isEmpty())
         return;
 
-    if (audioProcessor.getPlayHead() != nullptr && audioProcessor.getPlayHead()->getPosition()->getIsRecording())
+    if (audioProcessor.getPlayHead() != nullptr
+        && audioProcessor.getPlayHead()->getPosition()->getIsRecording())
     {
         //detectNewMidiLog.setText("recording");
         return; //the host might be recording the newest midi file
@@ -275,7 +285,7 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
     {
         return; //no new midi files
     }
-    if (getMidiFile(newMidiFile, midiFileToAnalyze))
+    if (!getMidiFile(newMidiFile, midiFileToAnalyze))
     {
         detectNewMidiLog.setText("can't read midi file");
         return;
@@ -322,7 +332,23 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
 
     juce::Array<MidiEvent> midiEventsToAnalyze;
     readMidiFile(midiFileToAnalyze, midiEventsToAnalyze);
-
+    juce::String results = "Analysis: \n";
+    for (MidiEvent& midi : midiEventsToAnalyze)
+    {
+        double lowestDifference = midi.ms - quantizedMidi[0].ms;
+        int closestQuantizedIndex = 0;
+        for (int i = 1; i < quantizedMidi.size(); i++)
+        {
+            if (std::abs(midi.ms - quantizedMidi[i].ms) < std::abs(lowestDifference))
+            {
+                lowestDifference = midi.ms - quantizedMidi[i].ms;
+                closestQuantizedIndex = i;
+            }
+        }
+        midi.msDifference = lowestDifference;
+        results += "Note: " + getMidiNoteName(midi.note) + ", ms Diff: " + juce::String(lowestDifference) + juce::newLine;
+    }
+    midiResults.setText(results);
     m_midiDisplay.setAnalyzedMidi(midiEventsToAnalyze);
 
     detectNewMidiLog.setText("");
@@ -443,8 +469,8 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
 
     fontSize_Slider.setValue(audioProcessor.stateInfo.getProperty(NAME_OF(fontSize_Slider)));
 
-    auto loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
-    if (loadMSTimeThreshold)
+    juce::var loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
+    if (!loadMSTimeThreshold.isVoid())
     {
         m_midiDisplay.setTimeThreshold(loadMSTimeThreshold, false);
         msTimeThreshold_Editor.setText(loadMSTimeThreshold, false);
@@ -458,9 +484,9 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
     editTempo_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(editTempo_Toggle)), true);
     tempo_Editor.setText(audioProcessor.stateInfo.getProperty(NAME_OF(tempo_Editor), false));
 
-    auto measureStart = audioProcessor.stateInfo.getProperty(NAME_OF(measureStart_Editor));
-    auto measureLength = audioProcessor.stateInfo.getProperty(NAME_OF(measureRangeLength_Editor));
-    if (measureStart && measureLength)
+    juce::var measureStart = audioProcessor.stateInfo.getProperty(NAME_OF(measureStart_Editor));
+    juce::var measureLength = audioProcessor.stateInfo.getProperty(NAME_OF(measureRangeLength_Editor));
+    if (!measureStart.isVoid() && !measureLength.isVoid())
     {
         measureStart_Editor.setText(measureStart, false);
         measureRangeLength_Editor.setText(measureLength, false);
@@ -476,8 +502,8 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
 
     detectNewMidi_Toggle.setToggleState(audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidi_Toggle)), true);
 
-    auto loadFrequency = audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidiFrequency_Editor));
-    if (loadFrequency && (int)loadFrequency > 0)
+    juce::var loadFrequency = audioProcessor.stateInfo.getProperty(NAME_OF(detectNewMidiFrequency_Editor));
+    if (!loadFrequency.isVoid() && (int)loadFrequency > 0)
         m_msDetectNewMidiFrequency = loadFrequency;
     detectNewMidiFrequency_Editor.setText(juce::String(m_msDetectNewMidiFrequency));
     
