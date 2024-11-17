@@ -1,5 +1,7 @@
 #pragma once
 
+#include <JuceHeader.h>
+
 struct MidiEvent
 {
     MidiEvent() : MidiEvent(0, 0, 0, 0, 0)
@@ -28,6 +30,17 @@ struct MidiEvent
         double beatSecondsLength = 60 / bpm;
         double midiSeconds = beatPosition * beatSecondsLength;
         return std::round(midiSeconds * 1000);
+    }
+
+    juce::String debugMidiEvent()
+    {
+        juce::String output;
+        output += "note: " + juce::String(note);
+        output += ", ms: " + juce::String(ms);
+        output += ", tickStart: " + juce::String(tickStart);
+        output += ", tickEnd: " + juce::String(tickEnd);
+        output += ", msDifference: " + juce::String(msDifference);
+        return output;
     }
 
     int note;

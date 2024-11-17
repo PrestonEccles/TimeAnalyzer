@@ -58,6 +58,8 @@ public:
 
     //==============================================================================
     double playHeadBpm;
+    juce::AudioPlayHead::TimeSignature playHeadTimeSignature;
+    int audioProcessCount = 0;
 
     juce::ValueTree stateInfo{ "TimeAnalyzer" };
     std::function<void()> stateLoadedCallback;
@@ -66,5 +68,5 @@ public:
 
 private:
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TimeAnalyzerAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TimeAnalyzerAudioProcessor)
 };

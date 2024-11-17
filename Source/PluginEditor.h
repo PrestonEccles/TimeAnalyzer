@@ -39,10 +39,57 @@ public:
     juce::String getMidiNoteName(juce::MidiMessage message);
     juce::String getMidiNoteName(int note);
 
+    void setPlayHeadInfo();
+
+    inline static juce::TextEditor* g_debug_Display;
+    inline static void debugLog(juce::String log) 
+    { 
+        if (g_debug_Display->isVisible()) 
+            g_debug_Display->setText(g_debug_Display->getText() + log + "\n"); 
+    }
+
     void debugTree(juce::ValueTree& tree);
+    void debugPlugin(juce::String callFrom)
+    {
+        if (!debug_Toggle.getToggleState())
+            return;
+
+        juce::String debugText = "\n=========================================================\n";
+        debugText += callFrom + ":\n\n";
+
+        debugText += "loadStateCount: " + juce::String(loadStateCount) + "\n";
+
+        debugText += m_midiDisplay.debugMidiDisplay() + "\n";
+
+        debugText += "Play Head is Null: " + juce::String((int) (audioProcessor.getPlayHead() == nullptr)) + "\n";
+        debugText += "audioProcessCount: " + juce::String(audioProcessor.audioProcessCount) + "\n";
+        debugText += "\n";
+
+        debugText += "msTimeThreshold_Editor: " + msTimeThreshold_Editor.getText() + "\n";
+        debugText += "playHeadTempo: " + playHeadTempo.getText() + "\n";
+        debugText += "tempo_Editor: " + tempo_Editor.getText() + "\n";
+        debugText += "measureStart_Editor: " + measureStart_Editor.getText() + "\n";
+        debugText += "measureRangeLength_Editor: " + measureRangeLength_Editor.getText() + "\n";
+        debugText += "midiDirectory_Editor: " + midiDirectory_Editor.getText() + "\n";
+        debugText += "detectNewMidiFrequency_Editor: " + detectNewMidiFrequency_Editor.getText() + "\n";
+        debugText += "m_msDetectNewMidiFrequency: " + juce::String(m_msDetectNewMidiFrequency) + "\n\n";
+
+        debugText += "quantizedMidi:\n";
+        for (auto& m : quantizedMidi)
+        {
+            debugText += m.debugMidiEvent() + "\n";
+        }
+        debugText += "\n";
+
+        debugText += "m_quantizedMidiFile: " + m_quantizedMidiFile.getFullPathName() + "\n";
+        debugText += "newestMidiFile: " + newestMidiFile.getFullPathName() + "\n";
+
+        debug_Display.setText(debug_Display.getText() + debugText);
+    }
 
     //==============================================================================
     void loadStateInfo();
+    int loadStateCount = 0;
 
     //==============================================================================
 
@@ -54,14 +101,15 @@ private:
 
     //==============================================================================
     MidiDisplay m_midiDisplay;
-    juce::TextEditor midiResults;
     std::function<void()> saveMidiResultsCallback;
 
-    juce::ToggleButton drumNotes_Toggle{ "Is Drums?" };
+    juce::ToggleButton debug_Toggle{ "Debug" };
+    juce::TextButton debugClear_Button{ "Clear" };
+    juce::TextButton debugRefresh_Button{ "Refresh" };
+    juce::TextEditor debug_Display;
+
     juce::TextButton msTimeThreshold_Title{ "Time Threshold (ms):" };
     juce::TextEditor msTimeThreshold_Editor;
-    juce::Slider fontSize_Slider;
-    juce::Font currentFont;
 
     juce::TextEditor playHeadTempo;
     juce::ToggleButton editTempo_Toggle{ "Edit Tempo" };

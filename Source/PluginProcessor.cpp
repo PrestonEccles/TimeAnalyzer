@@ -131,7 +131,9 @@ bool TimeAnalyzerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layo
 
 void TimeAnalyzerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    audioProcessCount++;
     playHeadBpm = *getPlayHead()->getPosition()->getBpm();
+    playHeadTimeSignature = *getPlayHead()->getPosition()->getTimeSignature();
 }
 
 //==============================================================================

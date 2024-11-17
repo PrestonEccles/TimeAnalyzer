@@ -5,13 +5,6 @@ const double g_quarterNoteTicks = 960;
 
 //==============================================================================
 
-MidiDisplay::MidiDisplay() 
-	: m_quantizedBeatRange(0), noteDisplayWidth(2), analyzedNoteDisplayWidth(4), m_beatSubDivisions(4),
-	m_msTimeThreshold(20), m_beatStart(0), m_beatEnd(0)
-{
-	m_timeSignature.numerator = 4;
-	m_timeSignature.denominator = 4;
-}
 void MidiDisplay::paint(juce::Graphics& g)
 {
 	int displayPadding = 100;
@@ -40,7 +33,7 @@ void MidiDisplay::paint(juce::Graphics& g)
 	for (int i = 0; i <= beatRange * m_beatSubDivisions; i++)
 	{
 		float lineThickness;
-		if (i % (m_timeSignature.numerator * m_beatSubDivisions) == 0) //first beat in the measure
+		if (i % (timeSignature.numerator * m_beatSubDivisions) == 0) //first beat in the measure
 			lineThickness = 3.f;
 		else if (i % m_beatSubDivisions == 0)
 			lineThickness = 2.f;
@@ -91,7 +84,7 @@ void MidiDisplay::resized()
 {
 }
 
-void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi, juce::AudioPlayHead* playHead)
+void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi)
 {
 	m_analyzedMidi.clear();
 	m_quantizedMidi = newQuantizedMidi; //copy
@@ -114,16 +107,6 @@ void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMid
 	m_lowestNote -= 1; //padding
 	m_highestNote += 1; //padding
 	m_quantizedBeatRange = std::ceil(lastTick / g_quarterNoteTicks);
-
-	if (playHead != nullptr)
-	{
-		m_timeSignature = *playHead->getPosition()->getTimeSignature();
-	}
-	else
-	{
-		m_timeSignature.numerator = 4;
-		m_timeSignature.denominator = 4;
-	}
 
 	repaint();
 }

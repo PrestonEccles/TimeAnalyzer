@@ -15,50 +15,36 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p), m_msDetectNewMidiFrequency(1000)
 {
+    g_debug_Display = &debug_Display;
+
     addAndMakeVisible(m_midiDisplay);
     m_midiDisplay.setVisible(true);
-
-    addAndMakeVisible(midiResults);
-    midiResults.setReadOnly(true);
-    midiResults.setMultiLine(true);
-    saveMidiResultsCallback = [&]()
+    
+    //debug
     {
-        audioProcessor.stateInfo.setProperty(NAME_OF(midiResults), midiResults.getText(), nullptr);
-    };
-    midiResults.onTextChange = saveMidiResultsCallback;
-    midiResults.setVisible(false);
+        addAndMakeVisible(debug_Display);
+        debug_Display.setMultiLine(true, true);
+        debug_Display.setVisible(false);
 
-    currentFont = midiResults.getFont();
-    addAndMakeVisible(fontSize_Slider);
-    fontSize_Slider.setTextValueSuffix(" Font Size");
-    fontSize_Slider.setRange(10, 50, .5);
-    fontSize_Slider.onValueChange = [&]()
-    {
-        midiResults.onTextChange = nullptr;
-        midiResults.setFont(currentFont.withHeight(fontSize_Slider.getValue()));
-
-        juce::String resultsString = midiResults.getText();
-        if (resultsString.isNotEmpty())
+        addAndMakeVisible(debug_Toggle);
+        debug_Toggle.onClick = [&]()
         {
-            if (resultsString[resultsString.length() - 1] == '\n')
-                midiResults.setText(resultsString.substring(0, resultsString.length() - 1));
-            else
-                midiResults.setText(resultsString + "\n");
-        }
-
-        midiResults.onTextChange = saveMidiResultsCallback;
-    };
-    fontSize_Slider.onDragEnd = [&]()
-    {
-        audioProcessor.stateInfo.setProperty(NAME_OF(fontSize_Slider), fontSize_Slider.getValue(), nullptr);
-    };
-
-    addAndMakeVisible(drumNotes_Toggle);
-    drumNotes_Toggle.onClick = [&]()
-    {
-        audioProcessor.stateInfo.setProperty(NAME_OF(drumNotes_Toggle),
-                                             drumNotes_Toggle.getToggleState(), nullptr);
-    };
+            debug_Display.setVisible(debug_Toggle.getToggleState());
+            m_midiDisplay.setVisible(!debug_Toggle.getToggleState());
+            audioProcessor.stateInfo.setProperty(NAME_OF(debug_Toggle), debug_Toggle.getToggleState(), nullptr);
+        };
+        addAndMakeVisible(debugClear_Button);
+        debugClear_Button.onClick = [&]()
+        {
+            debug_Display.clear();
+        };
+        addAndMakeVisible(debugRefresh_Button);
+        debugRefresh_Button.onClick = [&]()
+        {
+            debug_Display.clear();
+            debugPlugin("debugRefresh_Button");
+        };
+    }
 
     addAndMakeVisible(msTimeThreshold_Title);
     addAndMakeVisible(msTimeThreshold_Editor);
@@ -72,6 +58,7 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
     {
         addAndMakeVisible(playHeadTempo);
         playHeadTempo.setReadOnly(true);
+        playHeadTempo.setText("120");
 
 
         addAndMakeVisible(editTempo_Toggle);
@@ -250,16 +237,16 @@ void TimeAnalyzerAudioProcessorEditor::resized()
     }
     {
         auto tempoBounds = bounds.removeFromBottom(30);
-        drumNotes_Toggle.setBounds(tempoBounds.withWidth(100));
 
-        msTimeThreshold_Title.setBounds(tempoBounds.withSize(0, 25).withX(drumNotes_Toggle.getRight() + 10));
-        msTimeThreshold_Title.changeWidthToFitText();
-        msTimeThreshold_Editor.setBounds(tempoBounds.withSize(50, 25).withX(msTimeThreshold_Title.getRight()));
-
-        fontSize_Slider.setBounds(tempoBounds.withWidth(300).withX(msTimeThreshold_Editor.getRight() + 10));
+        debug_Toggle.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        debugClear_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        debugRefresh_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        msTimeThreshold_Title.setBounds(tempoBounds); msTimeThreshold_Title.changeWidthToFitText();
+        msTimeThreshold_Title.setBounds(tempoBounds.removeFromLeft(msTimeThreshold_Title.getWidth()));
+        msTimeThreshold_Editor.setBounds(tempoBounds.removeFromLeft(30));
     }
     m_midiDisplay.setBounds(bounds);
-    midiResults.setBounds(bounds);
+    debug_Display.setBounds(bounds);
 }
 
 void TimeAnalyzerAudioProcessorEditor::timerCallback()
@@ -297,7 +284,7 @@ void TimeAnalyzerAudioProcessorEditor::timerCallback()
 
 void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile(juce::File quantizedMidiFile)
 {
-    playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
+    setPlayHeadInfo();
 
     quantizedMidi.clear();
     juce::MidiFile quantizedMidiFileObject;
@@ -308,27 +295,19 @@ void TimeAnalyzerAudioProcessorEditor::setQuantizedMidiFile(juce::File quantized
     m_quantizedMidiFile = quantizedMidiFile;
     audioProcessor.stateInfo.setProperty(NAME_OF(m_quantizedMidiFile), m_quantizedMidiFile.getFullPathName(), nullptr);
 
-    juce::String results = "Quantized Midi Info: \n";
-    for (const MidiEvent& midi : quantizedMidi)
-    {
-        results += "Note: " + getMidiNoteName(midi.note)
-            + ", num: " + juce::String(midi.note)
-            + ", ms: " + juce::String(midi.ms) + juce::newLine;
-    }
-    midiResults.setText(results);
-
-    m_midiDisplay.setQuantizedMidi(quantizedMidi, audioProcessor.getPlayHead());
+    m_midiDisplay.setQuantizedMidi(quantizedMidi);
+    debugPlugin("setQuantizedMidiFile");
 }
 
 void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
 {
     if (quantizedMidi.isEmpty())
     {
-        midiResults.setText("Please Set a Quantized Midi File");
+        detectNewMidiLog.setText("Please Set a Quantized Midi File");
         return;
     }
 
-    playHeadTempo.setText(juce::String(audioProcessor.playHeadBpm));
+    setPlayHeadInfo();
 
     juce::Array<MidiEvent> midiEventsToAnalyze;
     readMidiFile(midiFileToAnalyze, midiEventsToAnalyze);
@@ -348,10 +327,10 @@ void TimeAnalyzerAudioProcessorEditor::analyzeMidiFile()
         midi.msDifference = lowestDifference;
         results += "Note: " + getMidiNoteName(midi.note) + ", ms Diff: " + juce::String(lowestDifference) + juce::newLine;
     }
-    midiResults.setText(results);
     m_midiDisplay.setAnalyzedMidi(midiEventsToAnalyze);
 
     detectNewMidiLog.setText("");
+    debugPlugin("analyzeMidiFile");
 }
 
 juce::File TimeAnalyzerAudioProcessorEditor::getNewMidiFile()
@@ -399,14 +378,18 @@ void TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::MidiFile midiFile, juc
     if (editTempo_Toggle.getToggleState())
         currentBpm = tempo_Editor.getText().getDoubleValue();
     else
-        currentBpm = audioProcessor.playHeadBpm;
+        currentBpm = playHeadTempo.getText().getDoubleValue();
+    debugLog("readMidiFile::currentBpm: " + juce::String(currentBpm));
 
     for (int i = 0; i < midiFile.getNumTracks(); i++)
     {
         for (auto sequence : *midiFile.getTrack(i))
         {
             if (sequence->message.isNoteOn())
+            {
                 out.add(MidiEvent(*sequence, currentBpm));
+                debugLog("readMidiFile::message.ms: " + juce::String(out.getLast().ms));
+            }
         }
     }
 }
@@ -418,7 +401,7 @@ juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(juce::MidiMessage
 
 juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int note)
 {
-    if (drumNotes_Toggle.getToggleState())
+    if (false) //get midi note names for drums
     {
         switch (note)
         {
@@ -440,6 +423,18 @@ juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int note)
     }
 
     return juce::MidiMessage::getMidiNoteName(note, true, true, 4);
+}
+
+void TimeAnalyzerAudioProcessorEditor::setPlayHeadInfo()
+{
+    auto playHead = audioProcessor.getPlayHead();
+    if (playHead && audioProcessor.audioProcessCount > 0)
+    {
+        playHeadTempo.setText(juce::String(*playHead->getPosition()->getBpm()));
+        m_midiDisplay.timeSignature = *playHead->getPosition()->getTimeSignature();
+    }
+    debugLog("setPlayHeadInfo::playHeadTempo: " + playHeadTempo.getText());
+    debugLog("setPlayHeadInfo::m_midiDisplay.timeSignature: " + juce::String(m_midiDisplay.timeSignature.numerator) + "/" + juce::String(m_midiDisplay.timeSignature.denominator));
 }
 
 void TimeAnalyzerAudioProcessorEditor::debugTree(juce::ValueTree& tree)
@@ -465,10 +460,6 @@ void TimeAnalyzerAudioProcessorEditor::debugTree(juce::ValueTree& tree)
 
 void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
 {
-    midiResults.setText(audioProcessor.stateInfo.getProperty(NAME_OF(midiResults)), false);
-
-    fontSize_Slider.setValue(audioProcessor.stateInfo.getProperty(NAME_OF(fontSize_Slider)));
-
     juce::var loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
     if (!loadMSTimeThreshold.isVoid())
     {
@@ -506,10 +497,17 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
     if (!loadFrequency.isVoid() && (int)loadFrequency > 0)
         m_msDetectNewMidiFrequency = loadFrequency;
     detectNewMidiFrequency_Editor.setText(juce::String(m_msDetectNewMidiFrequency));
-    
-    juce::String quantizedMidiFilePath = audioProcessor.stateInfo.getProperty(NAME_OF(m_quantizedMidiFile));
-    if (quantizedMidiFilePath.isNotEmpty())
+
+    juce::var quantizedMidiFilePath = audioProcessor.stateInfo.getProperty(NAME_OF(m_quantizedMidiFile));
+    if (!quantizedMidiFilePath.isVoid())
     {
-        setQuantizedMidiFile(juce::File(quantizedMidiFilePath));
+        setQuantizedMidiFile(juce::File(quantizedMidiFilePath.toString()));
     }
+
+    juce::var debugToggle = audioProcessor.stateInfo.getProperty(NAME_OF(debug_Toggle));
+    if (!debugToggle.isVoid())
+        debug_Toggle.setToggleState(debugToggle, true);
+
+    loadStateCount++;
+    debugPlugin("loadStateInfo");
 }
