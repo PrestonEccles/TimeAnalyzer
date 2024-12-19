@@ -428,11 +428,18 @@ juce::String TimeAnalyzerAudioProcessorEditor::getMidiNoteName(int note)
 void TimeAnalyzerAudioProcessorEditor::setPlayHeadInfo()
 {
     auto playHead = audioProcessor.getPlayHead();
+    double previousTempo = playHeadTempo.getText().getDoubleValue();
     if (playHead && audioProcessor.audioProcessCount > 0)
     {
-        playHeadTempo.setText(juce::String(*playHead->getPosition()->getBpm()));
+
+        double newTempo = *playHead->getPosition()->getBpm();
+        playHeadTempo.setText(juce::String(newTempo));
         m_midiDisplay.timeSignature = *playHead->getPosition()->getTimeSignature();
+
+        if (previousTempo != newTempo)
+            setQuantizedMidiFile(m_quantizedMidiFile);
     }
+
     debugLog("setPlayHeadInfo::playHeadTempo: " + playHeadTempo.getText());
     debugLog("setPlayHeadInfo::m_midiDisplay.timeSignature: " + juce::String(m_midiDisplay.timeSignature.numerator) + "/" + juce::String(m_midiDisplay.timeSignature.denominator));
 }
