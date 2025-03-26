@@ -17,13 +17,16 @@ public:
     //==============================================================================
     void setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi);
     void setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi);
+    void updateAnalyzedMidi();
     void clearAnalyzedMidi(bool repaintMidi);
 
+    void setBpm(double bpm, bool repaintMidi);
     //set threshold for when a midi note is considered "on time" and not late or early
     void setTimeThreshold(double ms, bool repaintMidi);
 
     //the measures that the midi display should show
     void setMeasureRange(int measureStart, int length, bool repaintMidi);
+    void setRecordStart(int measure, bool repaintMidi);
 
     //==============================================================================
     juce::String debugMidiDisplay();
@@ -38,11 +41,13 @@ private:
 
     int m_beatSubDivisions = 4;
     double m_quantizedBeatRange = 0;
+    int m_recordTickStart = 0;
     int m_beatStart = 0;
     int m_beatEnd = 0;
     int m_lowestNote = 0;
     int m_highestNote = 0;
 
+    double m_bpm = 120;
     //threshold for when a midi note is considered "on time" and not late or early
     double m_msTimeThreshold = 20;
 

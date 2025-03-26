@@ -6,6 +6,7 @@
               cppLanguageStandard="17">
   <MAINGROUP id="sCE93I" name="TimeAnalyzer">
     <GROUP id="{81AB3843-591C-E97A-EB1B-E31EF102644A}" name="Source">
+      <FILE id="eKExJr" name="Globals.h" compile="0" resource="0" file="Source/Globals.h"/>
       <FILE id="FVfQ5C" name="MidiDisplay.cpp" compile="1" resource="0" file="Source/MidiDisplay.cpp"/>
       <FILE id="dy5e53" name="MidiDisplay.h" compile="0" resource="0" file="Source/MidiDisplay.h"/>
       <FILE id="rpGq8q" name="MidiEvent.h" compile="0" resource="0" file="Source/MidiEvent.h"/>

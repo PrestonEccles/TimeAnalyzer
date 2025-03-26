@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Globals.h"
 #include "PluginProcessor.h"
 #include "MidiEvent.h"
 #include "MidiDisplay.h"
@@ -78,14 +79,18 @@ private:
     juce::TextButton msTimeThreshold_Title{ "Time Threshold (ms):" };
     juce::TextEditor msTimeThreshold_Editor;
 
+    juce::TextButton playHeadTempo_Title{ "Tempo:" };
     juce::TextEditor playHeadTempo;
     juce::ToggleButton editTempo_Toggle{ "Edit Tempo" };
     juce::TextEditor tempo_Editor;
+    juce::TextButton recordStartMeasure_Title{ "Record Start:" };
+    juce::TextEditor recordStartMeasure_Editor;
     juce::TextButton measureStart_Title{ "Measure Start:" };
     juce::TextEditor measureStart_Editor;
     juce::TextButton measureRangeLength_Title{ "Measure Range:" };
     juce::TextEditor measureRangeLength_Editor;
 
+    juce::TextButton midiDirectory_Title{ "Midi Folder Path:" };
     juce::TextEditor midiDirectory_Editor;
     juce::ToggleButton detectNewMidi_Toggle{ "Detect New Midi to Analyze" };
     juce::TextButton detectNewMidiFrequency_Title{ "Frequency (ms):" };

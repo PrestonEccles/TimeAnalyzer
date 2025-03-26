@@ -4,19 +4,14 @@
 
 struct MidiEvent
 {
-    MidiEvent() : MidiEvent(0, 0, 0, 0, 0)
-    {
-    }
-    MidiEvent(int note, double ms, double tickStart, double tickEnd, double msDifference)
-        : note(note), ms(ms), tickStart(tickStart), tickEnd(tickEnd), msDifference(msDifference)
+    MidiEvent()
     {
     }
     MidiEvent(const juce::MidiMessageSequence::MidiEventHolder& eventHolder, double bpm)
         : note(eventHolder.message.getNoteNumber()),
         ms(getMiliseconds(eventHolder.message.getTimeStamp(), bpm)),
         tickStart(eventHolder.message.getTimeStamp()),
-        tickEnd(0),
-        msDifference(0)
+        tickEnd(0)
     {
         if (eventHolder.noteOffObject != nullptr)
             tickEnd = eventHolder.noteOffObject->message.getTimeStamp();
@@ -24,7 +19,7 @@ struct MidiEvent
             tickEnd = tickStart;
     }
 
-    double getMiliseconds(double tickStart, double bpm)
+    inline static double getMiliseconds(double tickStart, double bpm)
     {
         double beatPosition = tickStart / 960;
         double beatSecondsLength = 60 / bpm;
@@ -39,13 +34,12 @@ struct MidiEvent
         output += ", ms: " + juce::String(ms);
         output += ", tickStart: " + juce::String(tickStart);
         output += ", tickEnd: " + juce::String(tickEnd);
-        output += ", msDifference: " + juce::String(msDifference);
         return output;
     }
 
-    int note;
-    double ms;
-    double tickStart;
-    double tickEnd;
-    double msDifference;
+    int note = 0;
+    double ms = 0;
+    double tickStart = 0;
+    double tickEnd = 0;
+    int closestQuantizedIndex = -1;
 };

@@ -64,15 +64,20 @@ void MidiDisplay::paint(juce::Graphics& g)
 	//analyze midi hits
 	for (const MidiEvent& midi : m_analyzedMidi)
 	{
-		if (std::abs(midi.msDifference) <= m_msTimeThreshold)
+		//relative to record start
+		double tickStart = midi.tickStart + m_recordTickStart;
+
+		double tickDifference = tickStart - m_quantizedMidi[midi.closestQuantizedIndex].tickStart;
+		double msDifference = MidiEvent::getMiliseconds(tickDifference, m_bpm);
+		if (std::abs(msDifference) <= m_msTimeThreshold)
 			g.setColour(onTimeColor);
-		else if (midi.msDifference > 0) //late
+		else if (msDifference > 0) //late
 			g.setColour(lateColor);
 		else //early
 			g.setColour(earlyColor);
 
 		//relative to the display range rather than the midi file
-		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart; 
+		float relativeBeat = tickStart / g_quarterNoteTicks - m_beatStart;
 
 		float startTimePosition = relativeBeat / beatRange * displayWidth + displayOffset;
 		float pitchPosition = (m_highestNote - midi.note) * noteDisplayHeight;
@@ -113,7 +118,29 @@ void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMid
 
 void MidiDisplay::setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi)
 {
-	m_analyzedMidi = newAnalyzedMidi; //copy
+	m_analyzedMidi = newAnalyzedMidi;
+	updateAnalyzedMidi();
+}
+
+void MidiDisplay::updateAnalyzedMidi()
+{
+	for (MidiEvent& midi : m_analyzedMidi)
+	{
+		//relative to the record start
+		double tickStart = midi.tickStart + m_recordTickStart;
+
+		double lowestDifference = tickStart - m_quantizedMidi[0].tickStart;
+		int closestQuantizedIndex = 0;
+		for (int i = 1; i < m_quantizedMidi.size(); i++)
+		{
+			if (std::abs(tickStart - m_quantizedMidi[i].tickStart) < std::abs(lowestDifference))
+			{
+				lowestDifference = tickStart - m_quantizedMidi[i].tickStart;
+				closestQuantizedIndex = i;
+			}
+		}
+		midi.closestQuantizedIndex = closestQuantizedIndex;
+	}
 
 	repaint();
 }
@@ -121,6 +148,16 @@ void MidiDisplay::setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi)
 void MidiDisplay::clearAnalyzedMidi(bool repaintMidi)
 {
 	m_analyzedMidi.clear();
+	if (repaintMidi)
+		repaint();
+}
+
+void MidiDisplay::setBpm(double bpm, bool repaintMidi)
+{
+	if (bpm < 0)
+		return; //not valid
+
+	m_bpm = bpm;
 	if (repaintMidi)
 		repaint();
 }
@@ -141,6 +178,13 @@ void MidiDisplay::setMeasureRange(int measureStart, int length, bool repaintMidi
 	m_beatEnd = (measureStart + length) * timeSignature.numerator;
 	if (repaintMidi)
 		repaint();
+}
+
+void MidiDisplay::setRecordStart(int measure, bool repaintMidi)
+{
+	m_recordTickStart = measure * timeSignature.numerator * g_quarterNoteTicks;
+	if (repaintMidi)
+		updateAnalyzedMidi();
 }
 
 juce::String MidiDisplay::debugMidiDisplay()
