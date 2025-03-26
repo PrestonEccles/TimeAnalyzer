@@ -23,11 +23,8 @@ public:
     ~TimeAnalyzerAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
-    void resized() override;
     void timerCallback() override;
 
-    //==============================================================================
     void setQuantizedMidiFile(juce::File quantizedMidiFile);
     //analyzes "midiFileToAnalyze"
     void analyzeMidiFile();
@@ -49,43 +46,7 @@ public:
     }
 
     void debugTree(juce::ValueTree& tree);
-    void debugPlugin(juce::String callFrom)
-    {
-        if (!debug_Toggle.getToggleState())
-            return;
-
-        juce::String debugText = "\n=========================================================\n";
-        debugText += callFrom + ":\n\n";
-
-        debugText += "loadStateCount: " + juce::String(loadStateCount) + "\n";
-
-        debugText += m_midiDisplay.debugMidiDisplay() + "\n";
-
-        debugText += "Play Head is Null: " + juce::String((int) (audioProcessor.getPlayHead() == nullptr)) + "\n";
-        debugText += "audioProcessCount: " + juce::String(audioProcessor.audioProcessCount) + "\n";
-        debugText += "\n";
-
-        debugText += "msTimeThreshold_Editor: " + msTimeThreshold_Editor.getText() + "\n";
-        debugText += "playHeadTempo: " + playHeadTempo.getText() + "\n";
-        debugText += "tempo_Editor: " + tempo_Editor.getText() + "\n";
-        debugText += "measureStart_Editor: " + measureStart_Editor.getText() + "\n";
-        debugText += "measureRangeLength_Editor: " + measureRangeLength_Editor.getText() + "\n";
-        debugText += "midiDirectory_Editor: " + midiDirectory_Editor.getText() + "\n";
-        debugText += "detectNewMidiFrequency_Editor: " + detectNewMidiFrequency_Editor.getText() + "\n";
-        debugText += "m_msDetectNewMidiFrequency: " + juce::String(m_msDetectNewMidiFrequency) + "\n\n";
-
-        debugText += "quantizedMidi:\n";
-        for (auto& m : quantizedMidi)
-        {
-            debugText += m.debugMidiEvent() + "\n";
-        }
-        debugText += "\n";
-
-        debugText += "m_quantizedMidiFile: " + m_quantizedMidiFile.getFullPathName() + "\n";
-        debugText += "newestMidiFile: " + newestMidiFile.getFullPathName() + "\n";
-
-        debug_Display.setText(debug_Display.getText() + debugText);
-    }
+    void debugPlugin(juce::String callFrom);
 
     //==============================================================================
     void loadStateInfo();
@@ -100,6 +61,12 @@ private:
     TimeAnalyzerAudioProcessor& audioProcessor;
 
     //==============================================================================
+    //UI:
+
+    void initializeUI();
+    void resized() override;
+    void paint(juce::Graphics& g) override;
+
     MidiDisplay m_midiDisplay;
     std::function<void()> saveMidiResultsCallback;
 

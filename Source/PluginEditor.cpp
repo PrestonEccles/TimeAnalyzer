@@ -15,165 +15,7 @@
 TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p), m_msDetectNewMidiFrequency(1000)
 {
-    g_debug_Display = &debug_Display;
-
-    addAndMakeVisible(m_midiDisplay);
-    m_midiDisplay.setVisible(true);
-    
-    //debug
-    {
-        addAndMakeVisible(debug_Display);
-        debug_Display.setMultiLine(true, true);
-        debug_Display.setVisible(false);
-
-        addAndMakeVisible(debug_Toggle);
-        debug_Toggle.onClick = [&]()
-        {
-            debug_Display.setVisible(debug_Toggle.getToggleState());
-            m_midiDisplay.setVisible(!debug_Toggle.getToggleState());
-            audioProcessor.stateInfo.setProperty(NAME_OF(debug_Toggle), debug_Toggle.getToggleState(), nullptr);
-        };
-        addAndMakeVisible(debugClear_Button);
-        debugClear_Button.onClick = [&]()
-        {
-            debug_Display.clear();
-        };
-        addAndMakeVisible(debugRefresh_Button);
-        debugRefresh_Button.onClick = [&]()
-        {
-            debug_Display.clear();
-            debugPlugin("debugRefresh_Button");
-        };
-    }
-
-    addAndMakeVisible(msTimeThreshold_Title);
-    addAndMakeVisible(msTimeThreshold_Editor);
-    msTimeThreshold_Editor.setSelectAllWhenFocused(true);
-    msTimeThreshold_Editor.onTextChange = [&]()
-    {
-        audioProcessor.stateInfo.setProperty(NAME_OF(msTimeThreshold_Editor), msTimeThreshold_Editor.getText(), nullptr);
-        m_midiDisplay.setTimeThreshold(msTimeThreshold_Editor.getText().getDoubleValue(), true);
-    };
-
-    {
-        addAndMakeVisible(playHeadTempo);
-        playHeadTempo.setReadOnly(true);
-        playHeadTempo.setText("120");
-
-
-        addAndMakeVisible(editTempo_Toggle);
-        editTempo_Toggle.onClick = [&]()
-        {
-            audioProcessor.stateInfo.setProperty(NAME_OF(editTempo_Toggle), editTempo_Toggle.getToggleState(), nullptr);
-            tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
-        };
-
-        addAndMakeVisible(tempo_Editor);
-        tempo_Editor.setSelectAllWhenFocused(true);
-        tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
-        tempo_Editor.onTextChange = [&]()
-        {
-            audioProcessor.stateInfo.setProperty(NAME_OF(tempo_Editor), tempo_Editor.getText(), nullptr);
-        };
-    }
-
-    {
-        addAndMakeVisible(measureStart_Title);
-        addAndMakeVisible(measureStart_Editor);
-        measureStart_Editor.setSelectAllWhenFocused(true);
-        measureStart_Editor.onTextChange = [&]()
-        {
-            audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), measureStart_Editor.getText(), nullptr);
-            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(), 
-                                          measureRangeLength_Editor.getText().getIntValue(), true);
-        };
-
-        addAndMakeVisible(measureRangeLength_Title);
-        addAndMakeVisible(measureRangeLength_Editor);
-        measureRangeLength_Editor.setSelectAllWhenFocused(true);
-        measureRangeLength_Editor.onTextChange = [&]()
-        {
-            audioProcessor.stateInfo.setProperty(NAME_OF(measureRangeLength_Editor), 
-                                                 measureRangeLength_Editor.getText(), nullptr);
-            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
-                                          measureRangeLength_Editor.getText().getIntValue(), true);
-        };
-    }
-
-    addAndMakeVisible(midiDirectory_Editor);
-    midiDirectory_Editor.setSelectAllWhenFocused(true);
-    midiDirectory_Editor.onTextChange = [&]()
-    {
-        audioProcessor.stateInfo.setProperty(NAME_OF(midiDirectory_Editor), midiDirectory_Editor.getText(), nullptr);
-    };
-
-    addAndMakeVisible(setQuantizedMidiFile_Button);
-    setQuantizedMidiFile_Button.onClick = [&]() { setQuantizedMidiFile(getNewMidiFile()); };
-
-    addAndMakeVisible(refreshQuantizedMidi_Button);
-    refreshQuantizedMidi_Button.onClick = [&]() { setQuantizedMidiFile(m_quantizedMidiFile); };
-
-    addAndMakeVisible(analyzeMidiFile_Button);
-    analyzeMidiFile_Button.onClick = [&]()
-    {
-        juce::File newMidiFile = getNewMidiFile();
-        if (!getMidiFile(newMidiFile, midiFileToAnalyze))
-        {
-            detectNewMidiLog.setText("can't read midi file");
-            return;
-        }
-        newestMidiFile = newMidiFile;
-        analyzeMidiFile();
-    };
-
-    {
-        addAndMakeVisible(detectNewMidi_Toggle);
-        detectNewMidi_Toggle.onClick = [&]()
-        {
-            bool newState = detectNewMidi_Toggle.getToggleState();
-            audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidi_Toggle), newState, nullptr);
-            detectNewMidiFrequency_Title.setVisible(newState);
-            detectNewMidiFrequency_Editor.setVisible(newState);
-
-            if (!newState)
-                stopTimer();
-            else if (!isTimerRunning())
-                startTimer(m_msDetectNewMidiFrequency);
-        };
-
-        addAndMakeVisible(detectNewMidiFrequency_Title);
-        detectNewMidiFrequency_Title.setVisible(detectNewMidi_Toggle.getToggleState());
-
-        addAndMakeVisible(detectNewMidiFrequency_Editor);
-        detectNewMidiFrequency_Editor.setSelectAllWhenFocused(true);
-        detectNewMidiFrequency_Editor.setVisible(detectNewMidi_Toggle.getToggleState());
-
-        detectNewMidiFrequency_Editor.onTextChange = [&]()
-        {
-            int newFrequency = detectNewMidiFrequency_Editor.getText().getIntValue();
-            if (newFrequency > 0 && newFrequency != m_msDetectNewMidiFrequency)
-            {
-                if (isTimerRunning())
-                    stopTimer();
-                startTimer(newFrequency);
-
-                m_msDetectNewMidiFrequency = newFrequency;
-                audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidiFrequency_Editor), newFrequency, nullptr);
-            }
-        };
-
-        if (detectNewMidi_Toggle.getToggleState())
-            startTimer(m_msDetectNewMidiFrequency);
-
-        addAndMakeVisible(detectNewMidiLog); 
-    }
-
-    setResizable(true, true);
-
-    if (audioProcessor.stateInfo.getProperty("width") && audioProcessor.stateInfo.getProperty("height"))
-        setSize(audioProcessor.stateInfo.getProperty("width"), audioProcessor.stateInfo.getProperty("height"));
-    else
-        setSize(500, 500);
+    initializeUI();
 
     audioProcessor.stateLoadedCallback = [this]() { loadStateInfo(); };
     loadStateInfo();
@@ -181,72 +23,6 @@ TimeAnalyzerAudioProcessorEditor::TimeAnalyzerAudioProcessorEditor(TimeAnalyzerA
 
 TimeAnalyzerAudioProcessorEditor::~TimeAnalyzerAudioProcessorEditor()
 {
-}
-
-//==============================================================================
-void TimeAnalyzerAudioProcessorEditor::paint(juce::Graphics& g)
-{
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-
-}
-
-void TimeAnalyzerAudioProcessorEditor::resized()
-{
-    audioProcessor.stateInfo.setProperty("width", getWidth(), nullptr);
-    audioProcessor.stateInfo.setProperty("height", getHeight(), nullptr);
-
-    auto bounds = getLocalBounds();
-
-    {
-        int divisionsX = 3;
-        auto tempoBounds = bounds.removeFromBottom(30);
-        setQuantizedMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX));
-        refreshQuantizedMidi_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
-                                              .withX(setQuantizedMidiFile_Button.getRight()));
-        analyzeMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
-                                              .withX(refreshQuantizedMidi_Button.getRight()));
-    }
-    {
-        auto tempoBounds = bounds.removeFromBottom(30);
-        midiDirectory_Editor.setBounds(tempoBounds.withWidth(getWidth() / 3));
-
-        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(200).withX(midiDirectory_Editor.getRight() + 10));
-
-        detectNewMidiFrequency_Title.setBounds(tempoBounds.withSize(0, 25)
-                                               .withX(detectNewMidi_Toggle.getRight()));
-        detectNewMidiFrequency_Title.changeWidthToFitText();
-        detectNewMidiFrequency_Editor.setBounds(tempoBounds.withSize(50, 25)
-                                                .withX(detectNewMidiFrequency_Title.getRight()));
-
-        detectNewMidiLog.setBounds(tempoBounds.withX(detectNewMidiFrequency_Editor.getRight()).withRight(getWidth()));
-    }
-    {
-        auto tempoBounds = bounds.removeFromBottom(30);
-        playHeadTempo.setBounds(tempoBounds.withSize(100, 25));
-        editTempo_Toggle.setBounds(tempoBounds.withSize(100, 25).withX(playHeadTempo.getRight() + 10));
-        tempo_Editor.setBounds(tempoBounds.withSize(100, 25).withX(editTempo_Toggle.getRight()));
-
-        measureStart_Title.setBounds(tempoBounds.withSize(0, 25).withX(tempo_Editor.getRight() + 10));
-        measureStart_Title.changeWidthToFitText();
-        measureStart_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureStart_Title.getRight()));
-
-        measureRangeLength_Title.setBounds(tempoBounds.withSize(0, 25).withX(measureStart_Editor.getRight() + 10));
-        measureRangeLength_Title.changeWidthToFitText();
-        measureRangeLength_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureRangeLength_Title.getRight()));
-    }
-    {
-        auto tempoBounds = bounds.removeFromBottom(30);
-
-        debug_Toggle.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
-        debugClear_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
-        debugRefresh_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
-        msTimeThreshold_Title.setBounds(tempoBounds); msTimeThreshold_Title.changeWidthToFitText();
-        msTimeThreshold_Title.setBounds(tempoBounds.removeFromLeft(msTimeThreshold_Title.getWidth()));
-        msTimeThreshold_Editor.setBounds(tempoBounds.removeFromLeft(30));
-    }
-    m_midiDisplay.setBounds(bounds);
-    debug_Display.setBounds(bounds);
 }
 
 void TimeAnalyzerAudioProcessorEditor::timerCallback()
@@ -465,6 +241,44 @@ void TimeAnalyzerAudioProcessorEditor::debugTree(juce::ValueTree& tree)
     }
 }
 
+void TimeAnalyzerAudioProcessorEditor::debugPlugin(juce::String callFrom)
+{
+    if (!debug_Toggle.getToggleState())
+        return;
+
+    juce::String debugText = "\n=========================================================\n";
+    debugText += callFrom + ":\n\n";
+
+    debugText += "loadStateCount: " + juce::String(loadStateCount) + "\n";
+
+    debugText += m_midiDisplay.debugMidiDisplay() + "\n";
+
+    debugText += "Play Head is Null: " + juce::String((int)(audioProcessor.getPlayHead() == nullptr)) + "\n";
+    debugText += "audioProcessCount: " + juce::String(audioProcessor.audioProcessCount) + "\n";
+    debugText += "\n";
+
+    debugText += "msTimeThreshold_Editor: " + msTimeThreshold_Editor.getText() + "\n";
+    debugText += "playHeadTempo: " + playHeadTempo.getText() + "\n";
+    debugText += "tempo_Editor: " + tempo_Editor.getText() + "\n";
+    debugText += "measureStart_Editor: " + measureStart_Editor.getText() + "\n";
+    debugText += "measureRangeLength_Editor: " + measureRangeLength_Editor.getText() + "\n";
+    debugText += "midiDirectory_Editor: " + midiDirectory_Editor.getText() + "\n";
+    debugText += "detectNewMidiFrequency_Editor: " + detectNewMidiFrequency_Editor.getText() + "\n";
+    debugText += "m_msDetectNewMidiFrequency: " + juce::String(m_msDetectNewMidiFrequency) + "\n\n";
+
+    debugText += "quantizedMidi:\n";
+    for (auto& m : quantizedMidi)
+    {
+        debugText += m.debugMidiEvent() + "\n";
+    }
+    debugText += "\n";
+
+    debugText += "m_quantizedMidiFile: " + m_quantizedMidiFile.getFullPathName() + "\n";
+    debugText += "newestMidiFile: " + newestMidiFile.getFullPathName() + "\n";
+
+    debug_Display.setText(debug_Display.getText() + debugText);
+}
+
 void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
 {
     juce::var loadMSTimeThreshold = audioProcessor.stateInfo.getProperty(NAME_OF(msTimeThreshold_Editor));
@@ -517,4 +331,232 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
 
     loadStateCount++;
     debugPlugin("loadStateInfo");
+}
+
+void TimeAnalyzerAudioProcessorEditor::initializeUI()
+{
+    g_debug_Display = &debug_Display;
+
+    addAndMakeVisible(m_midiDisplay);
+    m_midiDisplay.setVisible(true);
+
+    //debug
+    {
+        addAndMakeVisible(debug_Display);
+        debug_Display.setMultiLine(true, true);
+        debug_Display.setVisible(false);
+
+        addAndMakeVisible(debug_Toggle);
+        debug_Toggle.onClick = [&]()
+        {
+            debug_Display.setVisible(debug_Toggle.getToggleState());
+            m_midiDisplay.setVisible(!debug_Toggle.getToggleState());
+            audioProcessor.stateInfo.setProperty(NAME_OF(debug_Toggle), debug_Toggle.getToggleState(), nullptr);
+        };
+        addAndMakeVisible(debugClear_Button);
+        debugClear_Button.onClick = [&]()
+        {
+            debug_Display.clear();
+        };
+        addAndMakeVisible(debugRefresh_Button);
+        debugRefresh_Button.onClick = [&]()
+        {
+            debug_Display.clear();
+            debugPlugin("debugRefresh_Button");
+        };
+    }
+
+    addAndMakeVisible(msTimeThreshold_Title);
+    addAndMakeVisible(msTimeThreshold_Editor);
+    msTimeThreshold_Editor.setSelectAllWhenFocused(true);
+    msTimeThreshold_Editor.onTextChange = [&]()
+    {
+        audioProcessor.stateInfo.setProperty(NAME_OF(msTimeThreshold_Editor), msTimeThreshold_Editor.getText(), nullptr);
+        m_midiDisplay.setTimeThreshold(msTimeThreshold_Editor.getText().getDoubleValue(), true);
+    };
+
+    {
+        addAndMakeVisible(playHeadTempo);
+        playHeadTempo.setReadOnly(true);
+        playHeadTempo.setText("120");
+
+
+        addAndMakeVisible(editTempo_Toggle);
+        editTempo_Toggle.onClick = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(editTempo_Toggle), editTempo_Toggle.getToggleState(), nullptr);
+            tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
+        };
+
+        addAndMakeVisible(tempo_Editor);
+        tempo_Editor.setSelectAllWhenFocused(true);
+        tempo_Editor.setVisible(editTempo_Toggle.getToggleState());
+        tempo_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(tempo_Editor), tempo_Editor.getText(), nullptr);
+        };
+    }
+
+    {
+        addAndMakeVisible(measureStart_Title);
+        addAndMakeVisible(measureStart_Editor);
+        measureStart_Editor.setSelectAllWhenFocused(true);
+        measureStart_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), measureStart_Editor.getText(), nullptr);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
+                                          measureRangeLength_Editor.getText().getIntValue(), true);
+        };
+
+        addAndMakeVisible(measureRangeLength_Title);
+        addAndMakeVisible(measureRangeLength_Editor);
+        measureRangeLength_Editor.setSelectAllWhenFocused(true);
+        measureRangeLength_Editor.onTextChange = [&]()
+        {
+            audioProcessor.stateInfo.setProperty(NAME_OF(measureRangeLength_Editor),
+                                                 measureRangeLength_Editor.getText(), nullptr);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
+                                          measureRangeLength_Editor.getText().getIntValue(), true);
+        };
+    }
+
+    addAndMakeVisible(midiDirectory_Editor);
+    midiDirectory_Editor.setSelectAllWhenFocused(true);
+    midiDirectory_Editor.onTextChange = [&]()
+    {
+        audioProcessor.stateInfo.setProperty(NAME_OF(midiDirectory_Editor), midiDirectory_Editor.getText(), nullptr);
+    };
+
+    addAndMakeVisible(setQuantizedMidiFile_Button);
+    setQuantizedMidiFile_Button.onClick = [&]() { setQuantizedMidiFile(getNewMidiFile()); };
+
+    addAndMakeVisible(refreshQuantizedMidi_Button);
+    refreshQuantizedMidi_Button.onClick = [&]() { setQuantizedMidiFile(m_quantizedMidiFile); };
+
+    addAndMakeVisible(analyzeMidiFile_Button);
+    analyzeMidiFile_Button.onClick = [&]()
+    {
+        juce::File newMidiFile = getNewMidiFile();
+        if (!getMidiFile(newMidiFile, midiFileToAnalyze))
+        {
+            detectNewMidiLog.setText("can't read midi file");
+            return;
+        }
+        newestMidiFile = newMidiFile;
+        analyzeMidiFile();
+    };
+
+    {
+        addAndMakeVisible(detectNewMidi_Toggle);
+        detectNewMidi_Toggle.onClick = [&]()
+        {
+            bool newState = detectNewMidi_Toggle.getToggleState();
+            audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidi_Toggle), newState, nullptr);
+            detectNewMidiFrequency_Title.setVisible(newState);
+            detectNewMidiFrequency_Editor.setVisible(newState);
+
+            if (!newState)
+                stopTimer();
+            else if (!isTimerRunning())
+                startTimer(m_msDetectNewMidiFrequency);
+        };
+
+        addAndMakeVisible(detectNewMidiFrequency_Title);
+        detectNewMidiFrequency_Title.setVisible(detectNewMidi_Toggle.getToggleState());
+
+        addAndMakeVisible(detectNewMidiFrequency_Editor);
+        detectNewMidiFrequency_Editor.setSelectAllWhenFocused(true);
+        detectNewMidiFrequency_Editor.setVisible(detectNewMidi_Toggle.getToggleState());
+
+        detectNewMidiFrequency_Editor.onTextChange = [&]()
+        {
+            int newFrequency = detectNewMidiFrequency_Editor.getText().getIntValue();
+            if (newFrequency > 0 && newFrequency != m_msDetectNewMidiFrequency)
+            {
+                if (isTimerRunning())
+                    stopTimer();
+                startTimer(newFrequency);
+
+                m_msDetectNewMidiFrequency = newFrequency;
+                audioProcessor.stateInfo.setProperty(NAME_OF(detectNewMidiFrequency_Editor), newFrequency, nullptr);
+            }
+        };
+
+        if (detectNewMidi_Toggle.getToggleState())
+            startTimer(m_msDetectNewMidiFrequency);
+
+        addAndMakeVisible(detectNewMidiLog);
+    }
+
+    setResizable(true, true);
+
+    if (audioProcessor.stateInfo.getProperty("width") && audioProcessor.stateInfo.getProperty("height"))
+        setSize(audioProcessor.stateInfo.getProperty("width"), audioProcessor.stateInfo.getProperty("height"));
+    else
+        setSize(500, 500);
+}
+
+void TimeAnalyzerAudioProcessorEditor::resized()
+{
+    audioProcessor.stateInfo.setProperty("width", getWidth(), nullptr);
+    audioProcessor.stateInfo.setProperty("height", getHeight(), nullptr);
+
+    auto bounds = getLocalBounds();
+
+    {
+        int divisionsX = 3;
+        auto tempoBounds = bounds.removeFromBottom(30);
+        setQuantizedMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX));
+        refreshQuantizedMidi_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+                                              .withX(setQuantizedMidiFile_Button.getRight()));
+        analyzeMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+                                         .withX(refreshQuantizedMidi_Button.getRight()));
+    }
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+        midiDirectory_Editor.setBounds(tempoBounds.withWidth(getWidth() / 3));
+
+        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(200).withX(midiDirectory_Editor.getRight() + 10));
+
+        detectNewMidiFrequency_Title.setBounds(tempoBounds.withSize(0, 25)
+                                               .withX(detectNewMidi_Toggle.getRight()));
+        detectNewMidiFrequency_Title.changeWidthToFitText();
+        detectNewMidiFrequency_Editor.setBounds(tempoBounds.withSize(50, 25)
+                                                .withX(detectNewMidiFrequency_Title.getRight()));
+
+        detectNewMidiLog.setBounds(tempoBounds.withX(detectNewMidiFrequency_Editor.getRight()).withRight(getWidth()));
+    }
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+        playHeadTempo.setBounds(tempoBounds.withSize(100, 25));
+        editTempo_Toggle.setBounds(tempoBounds.withSize(100, 25).withX(playHeadTempo.getRight() + 10));
+        tempo_Editor.setBounds(tempoBounds.withSize(100, 25).withX(editTempo_Toggle.getRight()));
+
+        measureStart_Title.setBounds(tempoBounds.withSize(0, 25).withX(tempo_Editor.getRight() + 10));
+        measureStart_Title.changeWidthToFitText();
+        measureStart_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureStart_Title.getRight()));
+
+        measureRangeLength_Title.setBounds(tempoBounds.withSize(0, 25).withX(measureStart_Editor.getRight() + 10));
+        measureRangeLength_Title.changeWidthToFitText();
+        measureRangeLength_Editor.setBounds(tempoBounds.withSize(50, 25).withX(measureRangeLength_Title.getRight()));
+    }
+    {
+        auto tempoBounds = bounds.removeFromBottom(30);
+
+        debug_Toggle.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        debugClear_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        debugRefresh_Button.setBounds(tempoBounds.removeFromLeft(80)); tempoBounds.removeFromLeft(10);
+        msTimeThreshold_Title.setBounds(tempoBounds); msTimeThreshold_Title.changeWidthToFitText();
+        msTimeThreshold_Title.setBounds(tempoBounds.removeFromLeft(msTimeThreshold_Title.getWidth()));
+        msTimeThreshold_Editor.setBounds(tempoBounds.removeFromLeft(30));
+    }
+    m_midiDisplay.setBounds(bounds);
+    debug_Display.setBounds(bounds);
+}
+
+void TimeAnalyzerAudioProcessorEditor::paint(juce::Graphics& g)
+{
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+
 }
