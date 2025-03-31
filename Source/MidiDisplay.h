@@ -26,7 +26,10 @@ public:
 
     //the measures that the midi display should show
     void setMeasureRange(int measureStart, int length, bool repaintMidi);
+    //relative to measure start
     void setRecordStart(int measure, bool repaintMidi);
+    //retruns the absolute tick start
+    double getRecordTickStart() { return m_beatStart * g_quarterNoteTicks + m_recordTickStart; }
 
     //==============================================================================
     juce::String debugMidiDisplay();
@@ -41,7 +44,7 @@ private:
 
     int m_beatSubDivisions = 4;
     double m_quantizedBeatRange = 0;
-    int m_recordTickStart = 0;
+    double m_recordTickStart = 0;
     int m_beatStart = 0;
     int m_beatEnd = 0;
     int m_lowestNote = 0;

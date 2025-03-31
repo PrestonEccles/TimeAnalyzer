@@ -65,7 +65,7 @@ void MidiDisplay::paint(juce::Graphics& g)
 	for (const MidiEvent& midi : m_analyzedMidi)
 	{
 		//relative to record start
-		double tickStart = midi.tickStart + m_recordTickStart;
+		double tickStart = midi.tickStart + getRecordTickStart();
 
 		double tickDifference = tickStart - m_quantizedMidi[midi.closestQuantizedIndex].tickStart;
 		double msDifference = MidiEvent::getMiliseconds(tickDifference, m_bpm);
@@ -113,7 +113,7 @@ void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMid
 	m_highestNote += 1; //padding
 	m_quantizedBeatRange = std::ceil(lastTick / g_quarterNoteTicks);
 
-	repaint();
+	updateAnalyzedMidi();
 }
 
 void MidiDisplay::setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi)
@@ -127,7 +127,7 @@ void MidiDisplay::updateAnalyzedMidi()
 	for (MidiEvent& midi : m_analyzedMidi)
 	{
 		//relative to the record start
-		double tickStart = midi.tickStart + m_recordTickStart;
+		double tickStart = midi.tickStart + getRecordTickStart();
 
 		double lowestDifference = tickStart - m_quantizedMidi[0].tickStart;
 		int closestQuantizedIndex = 0;
@@ -177,7 +177,7 @@ void MidiDisplay::setMeasureRange(int measureStart, int length, bool repaintMidi
 	m_beatStart = measureStart * timeSignature.numerator;
 	m_beatEnd = (measureStart + length) * timeSignature.numerator;
 	if (repaintMidi)
-		repaint();
+		updateAnalyzedMidi();
 }
 
 void MidiDisplay::setRecordStart(int measure, bool repaintMidi)

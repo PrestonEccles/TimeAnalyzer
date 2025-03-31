@@ -293,7 +293,7 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
     juce::var loadRecordStartMeasure = audioProcessor.stateInfo.getProperty(NAME_OF(recordStartMeasure_Editor));
     if (!loadRecordStartMeasure.isVoid())
     {
-        measureStart_Editor.setText(loadRecordStartMeasure, false);
+        recordStartMeasure_Editor.setText(loadRecordStartMeasure, false);
         m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getIntValue(), false);
     }
     else
@@ -362,6 +362,7 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         debugClear_Button.onClick = [&]()
         {
             debug_Display.clear();
+            m_midiDisplay.clearAnalyzedMidi(true);
         };
         addAndMakeVisible(debugRefresh_Button);
         debugRefresh_Button.onClick = [&]()
