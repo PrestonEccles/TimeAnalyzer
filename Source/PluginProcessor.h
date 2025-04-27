@@ -62,6 +62,7 @@ public:
     int audioProcessCount = 0;
 
     juce::ValueTree stateInfo{ "TimeAnalyzer" };
+    juce::UndoManager undoManager;
     std::function<void()> stateLoadedCallback;
 
     //==============================================================================

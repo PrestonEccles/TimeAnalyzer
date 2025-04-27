@@ -23,6 +23,8 @@ public:
     TimeAnalyzerAudioProcessorEditor (TimeAnalyzerAudioProcessor&);
     ~TimeAnalyzerAudioProcessorEditor() override;
 
+    bool keyPressed(const juce::KeyPress& key) override;
+
     //==============================================================================
     void timerCallback() override;
 
@@ -87,6 +89,8 @@ private:
     juce::TextEditor recordStartMeasure_Editor;
     juce::TextButton measureStart_Title{ "Measure Start:" };
     juce::TextEditor measureStart_Editor;
+    juce::TextButton measureStartIncrement{ "+" };
+    juce::TextButton measureStartDecrement{ "-" };
     juce::TextButton measureRangeLength_Title{ "Measure Range:" };
     juce::TextEditor measureRangeLength_Editor;
 

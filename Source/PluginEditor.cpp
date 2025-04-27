@@ -25,6 +25,19 @@ TimeAnalyzerAudioProcessorEditor::~TimeAnalyzerAudioProcessorEditor()
 {
 }
 
+bool TimeAnalyzerAudioProcessorEditor::keyPressed(const juce::KeyPress& key)
+{
+    //if (key.isKeyCode('Z'))
+    //{
+    //    if (juce::ModifierKeys::getCurrentModifiers() == juce::ModifierKeys::ctrlModifier)
+    //    {
+    //        //audioProcessor.undoManager.
+    //        return true;
+    //    }
+    //}
+    return false;
+}
+
 void TimeAnalyzerAudioProcessorEditor::timerCallback()
 {
     if (!m_quantizedMidiFile.exists() && quantizedMidi.isEmpty())
@@ -424,6 +437,19 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
             m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
                                           measureRangeLength_Editor.getText().getIntValue(), true);
         };
+        
+        addAndMakeVisible(measureStartIncrement);
+        addAndMakeVisible(measureStartIncrement);
+        measureStartIncrement.onClick = [=]()
+        {
+            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() + 1), true);
+        };
+        addAndMakeVisible(measureStartDecrement);
+        addAndMakeVisible(measureStartDecrement);
+        measureStartDecrement.onClick = [=]()
+        {
+            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() - 1), true);
+        };
 
         addAndMakeVisible(measureRangeLength_Title);
         addAndMakeVisible(measureRangeLength_Editor);
@@ -525,62 +551,64 @@ void TimeAnalyzerAudioProcessorEditor::resized()
 
     {
         int divisionsX = 3;
-        Bounds tempoBounds = bounds.removeFromBottom(30).withHeight(25);
+        Bounds tempBounds = bounds.removeFromBottom(30).withHeight(25);
 
-        setQuantizedMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX));
-        refreshQuantizedMidi_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+        setQuantizedMidiFile_Button.setBounds(tempBounds.withWidth(getWidth() / divisionsX));
+        refreshQuantizedMidi_Button.setBounds(tempBounds.withWidth(getWidth() / divisionsX)
                                               .withX(setQuantizedMidiFile_Button.getRight()));
-        analyzeMidiFile_Button.setBounds(tempoBounds.withWidth(getWidth() / divisionsX)
+        analyzeMidiFile_Button.setBounds(tempBounds.withWidth(getWidth() / divisionsX)
                                          .withX(refreshQuantizedMidi_Button.getRight()));
     }
     {
-        Bounds tempoBounds = bounds.removeFromBottom(30).withHeight(25);
+        Bounds tempBounds = bounds.removeFromBottom(30).withHeight(25);
 
-        fitButtonInLeftBounds(tempoBounds, midiDirectory_Title);
-        midiDirectory_Editor.setBounds(tempoBounds.withWidth(getWidth() / 3));
+        fitButtonInLeftBounds(tempBounds, midiDirectory_Title);
+        midiDirectory_Editor.setBounds(tempBounds.withWidth(getWidth() / 3));
 
-        detectNewMidi_Toggle.setBounds(tempoBounds.withWidth(200).withX(midiDirectory_Editor.getRight() + 10));
+        detectNewMidi_Toggle.setBounds(tempBounds.withWidth(200).withX(midiDirectory_Editor.getRight() + 10));
 
-        detectNewMidiFrequency_Title.setBounds(tempoBounds.withSize(0, 25)
+        detectNewMidiFrequency_Title.setBounds(tempBounds.withSize(0, 25)
                                                .withX(detectNewMidi_Toggle.getRight()));
         detectNewMidiFrequency_Title.changeWidthToFitText();
-        detectNewMidiFrequency_Editor.setBounds(tempoBounds.withSize(50, 25)
+        detectNewMidiFrequency_Editor.setBounds(tempBounds.withSize(50, 25)
                                                 .withX(detectNewMidiFrequency_Title.getRight()));
 
-        detectNewMidiLog.setBounds(tempoBounds.withX(detectNewMidiFrequency_Editor.getRight()).withRight(getWidth()));
+        detectNewMidiLog.setBounds(tempBounds.withX(detectNewMidiFrequency_Editor.getRight()).withRight(getWidth()));
     }
     {
-        Bounds tempoBounds = bounds.removeFromBottom(30).withHeight(25);
+        Bounds tempBounds = bounds.removeFromBottom(30).withHeight(25);
 
-        fitButtonInLeftBounds(tempoBounds, recordStartMeasure_Title);
-        recordStartMeasure_Editor.setBounds(tempoBounds.removeFromLeft(40));
+        fitButtonInLeftBounds(tempBounds, recordStartMeasure_Title);
+        recordStartMeasure_Editor.setBounds(tempBounds.removeFromLeft(40));
 
-        tempoBounds.removeFromLeft(10);
+        tempBounds.removeFromLeft(10);
 
-        fitButtonInLeftBounds(tempoBounds, measureStart_Title);
-        measureStart_Editor.setBounds(tempoBounds.removeFromLeft(40));
+        fitButtonInLeftBounds(tempBounds, measureStart_Title);
+        measureStart_Editor.setBounds(tempBounds.removeFromLeft(40));
+        measureStartDecrement.setBounds(tempBounds.removeFromLeft(25));
+        measureStartIncrement.setBounds(tempBounds.removeFromLeft(25));
 
-        fitButtonInLeftBounds(tempoBounds, measureRangeLength_Title);
-        measureRangeLength_Editor.setBounds(tempoBounds.removeFromLeft(30));
+        fitButtonInLeftBounds(tempBounds, measureRangeLength_Title);
+        measureRangeLength_Editor.setBounds(tempBounds.removeFromLeft(30));
     }
     {
-        Bounds tempoBounds = bounds.removeFromBottom(30).withHeight(25);
+        Bounds tempBounds = bounds.removeFromBottom(30).withHeight(25);
 
-        fitButtonInLeftBounds(tempoBounds, debug_Toggle);
-        fitButtonInLeftBounds(tempoBounds, debugClear_Button);
-        fitButtonInLeftBounds(tempoBounds, debugRefresh_Button);
+        fitButtonInLeftBounds(tempBounds, debug_Toggle);
+        fitButtonInLeftBounds(tempBounds, debugClear_Button);
+        fitButtonInLeftBounds(tempBounds, debugRefresh_Button);
 
-        tempoBounds.removeFromLeft(10);
+        tempBounds.removeFromLeft(10);
 
-        fitButtonInLeftBounds(tempoBounds, playHeadTempo_Title);
-        playHeadTempo.setBounds(tempoBounds.removeFromLeft(50));
-        fitButtonInLeftBounds(tempoBounds, editTempo_Toggle);
-        tempo_Editor.setBounds(tempoBounds.removeFromLeft(50));
+        fitButtonInLeftBounds(tempBounds, playHeadTempo_Title);
+        playHeadTempo.setBounds(tempBounds.removeFromLeft(50));
+        fitButtonInLeftBounds(tempBounds, editTempo_Toggle);
+        tempo_Editor.setBounds(tempBounds.removeFromLeft(50));
 
-        tempoBounds.removeFromLeft(10);
+        tempBounds.removeFromLeft(10);
 
-        fitButtonInLeftBounds(tempoBounds, msTimeThreshold_Title);
-        msTimeThreshold_Editor.setBounds(tempoBounds.removeFromLeft(30));
+        fitButtonInLeftBounds(tempBounds, msTimeThreshold_Title);
+        msTimeThreshold_Editor.setBounds(tempBounds.removeFromLeft(30));
     }
     bounds.removeFromBottom(10);
 
