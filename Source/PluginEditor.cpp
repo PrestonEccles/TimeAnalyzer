@@ -439,16 +439,33 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         };
         
         addAndMakeVisible(measureStartIncrement);
-        addAndMakeVisible(measureStartIncrement);
         measureStartIncrement.onClick = [=]()
         {
             measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() + 1), true);
+            if (lockAnalyzedMidi_Toggle.getToggleState())
+                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getIntValue() - 1), true);
         };
-        addAndMakeVisible(measureStartDecrement);
         addAndMakeVisible(measureStartDecrement);
         measureStartDecrement.onClick = [=]()
         {
             measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() - 1), true);
+            if (lockAnalyzedMidi_Toggle.getToggleState())
+                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getIntValue() + 1), true);
+        };
+
+        addAndMakeVisible(lockAnalyzedMidi_Toggle);
+        lockAnalyzedMidi_Toggle.onClick = [this]
+        {
+            if (lockAnalyzedMidi_Toggle.getToggleState())
+            {
+                m_previousRecordStart = recordStartMeasure_Editor.getText().getIntValue();
+                m_previousMeasureStart = measureStart_Editor.getText().getIntValue();
+            }
+            else
+            {
+                recordStartMeasure_Editor.setText(juce::String(m_previousRecordStart), true);
+                measureStart_Editor.setText(juce::String(m_previousMeasureStart), true);
+            }
         };
 
         addAndMakeVisible(measureRangeLength_Title);
@@ -587,6 +604,12 @@ void TimeAnalyzerAudioProcessorEditor::resized()
         measureStart_Editor.setBounds(tempBounds.removeFromLeft(40));
         measureStartDecrement.setBounds(tempBounds.removeFromLeft(25));
         measureStartIncrement.setBounds(tempBounds.removeFromLeft(25));
+
+        tempBounds.removeFromLeft(10);
+
+        fitButtonInLeftBounds(tempBounds, lockAnalyzedMidi_Toggle);
+
+        tempBounds.removeFromLeft(10);
 
         fitButtonInLeftBounds(tempBounds, measureRangeLength_Title);
         measureRangeLength_Editor.setBounds(tempBounds.removeFromLeft(30));

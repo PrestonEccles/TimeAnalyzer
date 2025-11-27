@@ -91,6 +91,9 @@ private:
     juce::TextEditor measureStart_Editor;
     juce::TextButton measureStartIncrement{ "+" };
     juce::TextButton measureStartDecrement{ "-" };
+    juce::ToggleButton lockAnalyzedMidi_Toggle{ "Lock Analyzed Midi" };
+    int m_previousRecordStart = 0;
+    int m_previousMeasureStart = 0;
     juce::TextButton measureRangeLength_Title{ "Measure Range:" };
     juce::TextEditor measureRangeLength_Editor;
 
