@@ -8,6 +8,9 @@ inline juce::Font getMonoFont(float fontHeight = 14.f) { return juce::Font("Casc
 inline const juce::Colour g_defaultEditorColor = juce::Colour(38, 50, 56);
 
 typedef juce::Rectangle<int> Bounds;
+typedef juce::String jString;
+
+
 //return the expanded area
 inline Bounds expandBottomOfBounds(Bounds& bounds, int expand)
 {

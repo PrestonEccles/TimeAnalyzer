@@ -424,7 +424,8 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         recordStartMeasure_Editor.setSelectAllWhenFocused(true);
         recordStartMeasure_Editor.onTextChange = [&]()
         {
-            audioProcessor.stateInfo.setProperty(NAME_OF(recordStartMeasure_Editor), recordStartMeasure_Editor.getText(), nullptr);
+            audioProcessor.stateInfo.setProperty(NAME_OF(recordStartMeasure_Editor), 
+                                                 lockAnalyzedMidi_Toggle.getToggleState() ? jString(m_previousRecordStart) : recordStartMeasure_Editor.getText(), nullptr);
             m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getIntValue(), true);
         };
         
@@ -433,7 +434,8 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         measureStart_Editor.setSelectAllWhenFocused(true);
         measureStart_Editor.onTextChange = [&]()
         {
-            audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), measureStart_Editor.getText(), nullptr);
+            audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), 
+                                                 lockAnalyzedMidi_Toggle.getToggleState() ? jString(m_previousMeasureStart) : measureStart_Editor.getText(), nullptr);
             m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
                                           measureRangeLength_Editor.getText().getIntValue(), true);
         };
