@@ -1,9 +1,6 @@
 #include "MidiDisplay.h"
 
 //==============================================================================
-const double g_quarterNoteTicks = 960;
-
-//==============================================================================
 
 void MidiDisplay::paint(juce::Graphics& g)
 {
@@ -13,7 +10,6 @@ void MidiDisplay::paint(juce::Graphics& g)
 
 	static int repaintCounter = 0;
 	repaintCounter++;
-	DBG("Repainted: " << repaintCounter);
 
 	double beatRange;
 	if (m_beatStart >= 0 && m_beatStart < m_beatEnd) //valid range?

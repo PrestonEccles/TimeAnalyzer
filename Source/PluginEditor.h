@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <JuceHeader.h>
 #include "Globals.h"
 #include "PluginProcessor.h"
 #include "MidiEvent.h"
@@ -29,12 +28,20 @@ public:
     void timerCallback() override;
 
     void setQuantizedMidiFile(juce::File quantizedMidiFile);
-    //analyzes "midiFileToAnalyze"
-    void analyzeMidiFile();
+    void analyzeFile();
+    void analyzeFile(juce::File fileToAnalyze);
 
-    juce::File getNewMidiFile();
+    //get midi or audio file
+    juce::File getNewFile(bool midiFile = true);
+
+    bool canReadMidiFile(juce::File fileOfMidi);
     bool getMidiFile(juce::File fileOfMidi, juce::MidiFile& out);
     void readMidiFile(juce::MidiFile midiFile, juce::Array<MidiEvent>& out);
+
+    bool canReadAudioFile(juce::File audioFile);
+    void readAudioFile(juce::File audioFile, juce::Array<MidiEvent>& out);
+
+    const int maxAudioFileMinuteLength = 10;
 
     juce::String getMidiNoteName(juce::MidiMessage message);
     juce::String getMidiNoteName(int note);
@@ -109,11 +116,19 @@ private:
     juce::TextButton refreshQuantizedMidi_Button{ "Refresh Quantized Midi" };
     juce::TextButton analyzeMidiFile_Button{ "Analyze Midi File" };
 
+    juce::ToggleButton analyzeAudioFiles_Toggle{ "Analyze Audio Files" };
+    juce::TextButton audioDBThreshold_Title{ "dB Threshold:" };
+    juce::Slider audioDBThreshold_Slider;
+    juce::TextButton audioHitDistance_Title{ "Hit Distance (ms):" };
+    juce::TextEditor audioHitDistance_Editor;
+
     //==============================================================================
     juce::Array<MidiEvent> quantizedMidi;
     juce::File m_quantizedMidiFile;
-    juce::File newestMidiFile;
+    juce::File newestFile;
+    juce::int64 newestFileSize = 0;
     juce::MidiFile midiFileToAnalyze;
+    juce::File audioFileToAnalyze;
 
     //==============================================================================
 

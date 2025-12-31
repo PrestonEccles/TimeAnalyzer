@@ -1,8 +1,11 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "TimerBenchmark.h"
 
 #define NAME_OF(name) (#name)
+
+inline const double g_quarterNoteTicks = 960;
 
 inline juce::Font getMonoFont(float fontHeight = 14.f) { return juce::Font("Cascadia Mono", fontHeight, 0); }
 inline const juce::Colour g_defaultEditorColor = juce::Colour(38, 50, 56);

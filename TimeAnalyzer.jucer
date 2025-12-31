@@ -17,6 +17,10 @@
             file="Source/PluginProcessor.cpp"/>
       <FILE id="kT7zjD" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
+      <FILE id="f5UJqm" name="TimerBenchmark.cpp" compile="1" resource="0"
+            file="Source/TimerBenchmark.cpp"/>
+      <FILE id="G2r1Ly" name="TimerBenchmark.h" compile="0" resource="0"
+            file="Source/TimerBenchmark.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>

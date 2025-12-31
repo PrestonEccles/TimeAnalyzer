@@ -1,6 +1,6 @@
 #pragma once
 
-#include <JuceHeader.h>
+#include "Globals.h"
 #include "MidiEvent.h"
 
 extern const double g_quarterNoteTicks;
