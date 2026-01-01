@@ -36,10 +36,10 @@ public:
 
     bool canReadMidiFile(juce::File fileOfMidi);
     bool getMidiFile(juce::File fileOfMidi, juce::MidiFile& out);
-    void readMidiFile(juce::MidiFile midiFile, juce::Array<MidiEvent>& out);
+    void readMidiFile(juce::MidiFile midiFile, vArray<MidiEvent>& out);
 
     bool canReadAudioFile(juce::File audioFile);
-    void readAudioFile(juce::File audioFile, juce::Array<MidiEvent>& out);
+    void readAudioFile(juce::File audioFile, vArray<MidiEvent>& out);
 
     const int maxAudioFileMinuteLength = 10;
 
@@ -99,8 +99,8 @@ private:
     juce::TextButton measureStartIncrement{ "+" };
     juce::TextButton measureStartDecrement{ "-" };
     juce::ToggleButton lockAnalyzedMidi_Toggle{ "Lock Analyzed Midi" };
-    int m_previousRecordStart = 0;
-    int m_previousMeasureStart = 0;
+    double m_previousRecordStart = 0;
+    double m_previousMeasureStart = 0;
     juce::TextButton measureRangeLength_Title{ "Measure Range:" };
     juce::TextEditor measureRangeLength_Editor;
 
@@ -123,7 +123,7 @@ private:
     juce::TextEditor audioHitDistance_Editor;
 
     //==============================================================================
-    juce::Array<MidiEvent> quantizedMidi;
+    vArray<MidiEvent> quantizedMidi;
     juce::File m_quantizedMidiFile;
     juce::File newestFile;
     juce::int64 newestFileSize = 0;

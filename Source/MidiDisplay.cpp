@@ -50,7 +50,7 @@ void MidiDisplay::paint(juce::Graphics& g)
 	for (const MidiEvent& midi : m_quantizedMidi)
 	{
 		//relative to the display range rather than the midi file
-		float relativeBeat = midi.tickStart / g_quarterNoteTicks - m_beatStart; 
+		float relativeBeat = midi.tickStart / midi.quarterNoteTicks - m_beatStart;
 
 		float startTimePosition = relativeBeat / beatRange * displayWidth + displayOffset;
 		float pitchPosition = (m_highestNote - midi.note) * noteDisplayHeight;
@@ -61,10 +61,15 @@ void MidiDisplay::paint(juce::Graphics& g)
 	for (const MidiEvent& midi : m_analyzedMidi)
 	{
 		//relative to record start
-		double tickStart = midi.tickStart + getRecordTickStart();
+		double tickStart = midi.tickStart + getRecordTickStart(midi.quarterNoteTicks);
+		double msStart = MidiEvent::getMiliseconds(tickStart, m_bpm, midi.quarterNoteTicks);
 
-		double tickDifference = tickStart - m_quantizedMidi[midi.closestQuantizedIndex].tickStart;
-		double msDifference = MidiEvent::getMiliseconds(tickDifference, m_bpm);
+		if (midi.closestQuantizedIndex < 0 || midi.closestQuantizedIndex >= m_quantizedMidi.size())
+			continue;
+		MidiEvent& quantizedMidi = m_quantizedMidi[midi.closestQuantizedIndex];
+		double quantizedMSStart = MidiEvent::getMiliseconds(quantizedMidi.tickStart, m_bpm, quantizedMidi.quarterNoteTicks);
+
+		double msDifference = msStart - quantizedMSStart;
 		if (std::abs(msDifference) <= m_msTimeThreshold)
 			g.setColour(onTimeColor);
 		else if (msDifference > 0) //late
@@ -73,10 +78,11 @@ void MidiDisplay::paint(juce::Graphics& g)
 			g.setColour(earlyColor);
 
 		//relative to the display range rather than the midi file
-		float relativeBeat = tickStart / g_quarterNoteTicks - m_beatStart;
+		float relativeBeat = tickStart / midi.quarterNoteTicks - m_beatStart;
 
 		float startTimePosition = relativeBeat / beatRange * displayWidth + displayOffset;
-		float pitchPosition = (m_highestNote - midi.note) * noteDisplayHeight;
+		int note = midi.useQuantizedNote ? quantizedMidi.note : midi.note;
+		float pitchPosition = (m_highestNote - note) * noteDisplayHeight;
 		g.fillRect(startTimePosition, pitchPosition, analyzedNoteDisplayWidth, noteDisplayHeight);
 	}
 }
@@ -85,7 +91,7 @@ void MidiDisplay::resized()
 {
 }
 
-void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi)
+void MidiDisplay::setQuantizedMidi(const vArray<MidiEvent>& newQuantizedMidi)
 {
 	m_analyzedMidi.clear();
 	m_quantizedMidi = newQuantizedMidi; //copy
@@ -107,12 +113,12 @@ void MidiDisplay::setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMid
 	}
 	m_lowestNote -= 1; //padding
 	m_highestNote += 1; //padding
-	m_quantizedBeatRange = std::ceil(lastTick / g_quarterNoteTicks);
+	m_quantizedBeatRange = std::ceil(lastTick / m_quantizedMidi[0].quarterNoteTicks);
 
 	updateAnalyzedMidi();
 }
 
-void MidiDisplay::setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi)
+void MidiDisplay::setAnalyzedMidi(const vArray<MidiEvent>& newAnalyzedMidi)
 {
 	m_analyzedMidi = newAnalyzedMidi;
 	updateAnalyzedMidi();
@@ -123,15 +129,15 @@ void MidiDisplay::updateAnalyzedMidi()
 	for (MidiEvent& midi : m_analyzedMidi)
 	{
 		//relative to the record start
-		double tickStart = midi.tickStart + getRecordTickStart();
+		double tickStart = midi.tickStart + getRecordTickStart(midi.quarterNoteTicks);
 
-		double lowestDifference = tickStart - m_quantizedMidi[0].tickStart;
+		double lowestDifference = tickStart - m_quantizedMidi[0].getTickStart(midi.quarterNoteTicks);
 		int closestQuantizedIndex = 0;
 		for (int i = 1; i < m_quantizedMidi.size(); i++)
 		{
-			if (std::abs(tickStart - m_quantizedMidi[i].tickStart) < std::abs(lowestDifference))
+			if (std::abs(tickStart - m_quantizedMidi[i].getTickStart(midi.quarterNoteTicks)) < std::abs(lowestDifference))
 			{
-				lowestDifference = tickStart - m_quantizedMidi[i].tickStart;
+				lowestDifference = tickStart - m_quantizedMidi[i].getTickStart(midi.quarterNoteTicks);
 				closestQuantizedIndex = i;
 			}
 		}
@@ -168,7 +174,7 @@ void MidiDisplay::setTimeThreshold(double ms, bool repaintMidi)
 		repaint();
 }
 
-void MidiDisplay::setMeasureRange(int measureStart, int length, bool repaintMidi)
+void MidiDisplay::setMeasureRange(double measureStart, double length, bool repaintMidi)
 {
 	m_beatStart = measureStart * timeSignature.numerator;
 	m_beatEnd = (measureStart + length) * timeSignature.numerator;
@@ -176,9 +182,9 @@ void MidiDisplay::setMeasureRange(int measureStart, int length, bool repaintMidi
 		updateAnalyzedMidi();
 }
 
-void MidiDisplay::setRecordStart(int measure, bool repaintMidi)
+void MidiDisplay::setRecordStart(double measure, bool repaintMidi)
 {
-	m_recordTickStart = measure * timeSignature.numerator * g_quarterNoteTicks;
+	m_recordBeatStart = measure * timeSignature.numerator;
 	if (repaintMidi)
 		updateAnalyzedMidi();
 }

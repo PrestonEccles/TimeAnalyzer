@@ -3,7 +3,7 @@
 #include "Globals.h"
 #include "MidiEvent.h"
 
-extern const double g_quarterNoteTicks;
+extern const double g_defaultQuarterNoteTicks;
 
 class MidiDisplay : public juce::Component
 {
@@ -15,8 +15,8 @@ public:
     void resized() override;
 
     //==============================================================================
-    void setQuantizedMidi(const juce::Array<MidiEvent>& newQuantizedMidi);
-    void setAnalyzedMidi(const juce::Array<MidiEvent>& newAnalyzedMidi);
+    void setQuantizedMidi(const vArray<MidiEvent>& newQuantizedMidi);
+    void setAnalyzedMidi(const vArray<MidiEvent>& newAnalyzedMidi);
     void updateAnalyzedMidi();
     void clearAnalyzedMidi(bool repaintMidi);
 
@@ -25,11 +25,11 @@ public:
     void setTimeThreshold(double ms, bool repaintMidi);
 
     //the measures that the midi display should show
-    void setMeasureRange(int measureStart, int length, bool repaintMidi);
+    void setMeasureRange(double measureStart, double length, bool repaintMidi);
     //relative to measure start
-    void setRecordStart(int measure, bool repaintMidi);
+    void setRecordStart(double measure, bool repaintMidi);
     //retruns the absolute tick start
-    double getRecordTickStart() { return m_beatStart * g_quarterNoteTicks + m_recordTickStart; }
+    double getRecordTickStart(int quarterNoteTicks) { return (m_beatStart + m_recordBeatStart) * quarterNoteTicks; }
 
     //==============================================================================
     juce::String debugMidiDisplay();
@@ -39,14 +39,14 @@ public:
     juce::AudioPlayHead::TimeSignature timeSignature;
 
 private:
-    juce::Array<MidiEvent> m_quantizedMidi;
-    juce::Array<MidiEvent> m_analyzedMidi;
+    vArray<MidiEvent> m_quantizedMidi;
+    vArray<MidiEvent> m_analyzedMidi;
 
     int m_beatSubDivisions = 4;
     double m_quantizedBeatRange = 0;
-    double m_recordTickStart = 0;
-    int m_beatStart = 0;
-    int m_beatEnd = 0;
+    double m_recordBeatStart = 0;
+    double m_beatStart = 0;
+    double m_beatEnd = 0;
     int m_lowestNote = 0;
     int m_highestNote = 0;
 

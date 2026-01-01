@@ -88,7 +88,7 @@ void TimeAnalyzerAudioProcessorEditor::analyzeFile()
 
     setPlayHeadInfo();
 
-    juce::Array<MidiEvent> midiEventsToAnalyze;
+    vArray<MidiEvent> midiEventsToAnalyze;
     if (analyzeAudioFiles_Toggle.getToggleState())
         readAudioFile(audioFileToAnalyze, midiEventsToAnalyze);
     else
@@ -188,7 +188,7 @@ bool TimeAnalyzerAudioProcessorEditor::getMidiFile(juce::File fileOfMidi, juce::
     return true;
 }
 
-void TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::MidiFile midiFile, juce::Array<MidiEvent>& out)
+void TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::MidiFile midiFile, vArray<MidiEvent>& out)
 {
     if (midiFile.getNumTracks() == 0)
         return;
@@ -199,6 +199,7 @@ void TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::MidiFile midiFile, juc
     else
         currentBpm = playHeadTempo.getText().getDoubleValue();
     debugLog("readMidiFile::currentBpm: " + juce::String(currentBpm));
+    debugLog("readMidiFile::getTimeFormat: " + juce::String(midiFile.getTimeFormat()));
 
     TimerBench timerBench("Read Midi File Time");
     for (int i = 0; i < midiFile.getNumTracks(); i++)
@@ -207,7 +208,7 @@ void TimeAnalyzerAudioProcessorEditor::readMidiFile(juce::MidiFile midiFile, juc
         {
             if (sequence->message.isNoteOn())
             {
-                out.add(MidiEvent(*sequence, currentBpm));
+                out.add(MidiEvent(*sequence, currentBpm, midiFile.getTimeFormat()));
                 debugLog("readMidiFile::message.ms: " + juce::String(out.getLast().debugMS));
             }
         }
@@ -237,7 +238,7 @@ bool TimeAnalyzerAudioProcessorEditor::canReadAudioFile(juce::File audioFile)
     return true;
 }
 
-void TimeAnalyzerAudioProcessorEditor::readAudioFile(juce::File audioFile, juce::Array<MidiEvent>& out)
+void TimeAnalyzerAudioProcessorEditor::readAudioFile(juce::File audioFile, vArray<MidiEvent>& out)
 {
     if (!audioFile.exists())
         return;
@@ -279,7 +280,7 @@ void TimeAnalyzerAudioProcessorEditor::readAudioFile(juce::File audioFile, juce:
         float dBVolume = juce::Decibels::gainToDecibels<float>(audioBuffer.getSample(0, sample));
         if (dBVolume > dBThreshold && (samplesSinceLastHit > hitDistanceSamples || out.isEmpty()))
         {
-            out.add(MidiEvent(60, sample / reader->sampleRate * 1000, currentBpm));
+            out.add(MidiEvent(sample / reader->sampleRate * 1000, currentBpm));
             samplesSinceLastHit = 0;
         }
         samplesSinceLastHit++;
@@ -430,7 +431,7 @@ void TimeAnalyzerAudioProcessorEditor::loadStateInfo()
     if (!loadRecordStartMeasure.isVoid())
     {
         recordStartMeasure_Editor.setText(loadRecordStartMeasure, false);
-        m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getIntValue(), false);
+        m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getDoubleValue(), false);
     }
     else
     {
@@ -559,7 +560,7 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         {
             audioProcessor.stateInfo.setProperty(NAME_OF(recordStartMeasure_Editor), 
                                                  lockAnalyzedMidi_Toggle.getToggleState() ? jString(m_previousRecordStart) : recordStartMeasure_Editor.getText(), nullptr);
-            m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getIntValue(), true);
+            m_midiDisplay.setRecordStart(recordStartMeasure_Editor.getText().getDoubleValue(), true);
         };
         
         addAndMakeVisible(measureStart_Title);
@@ -569,23 +570,23 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         {
             audioProcessor.stateInfo.setProperty(NAME_OF(measureStart_Editor), 
                                                  lockAnalyzedMidi_Toggle.getToggleState() ? jString(m_previousMeasureStart) : measureStart_Editor.getText(), nullptr);
-            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
-                                          measureRangeLength_Editor.getText().getIntValue(), true);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getDoubleValue(),
+                                          measureRangeLength_Editor.getText().getDoubleValue(), true);
         };
         
         addAndMakeVisible(measureStartIncrement);
         measureStartIncrement.onClick = [=]()
         {
-            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() + 1), true);
+            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getDoubleValue() + 1), true);
             if (lockAnalyzedMidi_Toggle.getToggleState())
-                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getIntValue() - 1), true);
+                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getDoubleValue() - 1), true);
         };
         addAndMakeVisible(measureStartDecrement);
         measureStartDecrement.onClick = [=]()
         {
-            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getIntValue() - 1), true);
+            measureStart_Editor.setText(juce::String(measureStart_Editor.getText().getDoubleValue() - 1), true);
             if (lockAnalyzedMidi_Toggle.getToggleState())
-                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getIntValue() + 1), true);
+                recordStartMeasure_Editor.setText(juce::String(recordStartMeasure_Editor.getText().getDoubleValue() + 1), true);
         };
 
         addAndMakeVisible(lockAnalyzedMidi_Toggle);
@@ -593,8 +594,8 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         {
             if (lockAnalyzedMidi_Toggle.getToggleState())
             {
-                m_previousRecordStart = recordStartMeasure_Editor.getText().getIntValue();
-                m_previousMeasureStart = measureStart_Editor.getText().getIntValue();
+                m_previousRecordStart = recordStartMeasure_Editor.getText().getDoubleValue();
+                m_previousMeasureStart = measureStart_Editor.getText().getDoubleValue();
             }
             else
             {
@@ -610,8 +611,8 @@ void TimeAnalyzerAudioProcessorEditor::initializeUI()
         {
             audioProcessor.stateInfo.setProperty(NAME_OF(measureRangeLength_Editor),
                                                  measureRangeLength_Editor.getText(), nullptr);
-            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getIntValue(),
-                                          measureRangeLength_Editor.getText().getIntValue(), true);
+            m_midiDisplay.setMeasureRange(measureStart_Editor.getText().getDoubleValue(),
+                                          measureRangeLength_Editor.getText().getDoubleValue(), true);
         };
     }
 
